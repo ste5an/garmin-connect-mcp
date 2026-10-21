@@ -61,6 +61,13 @@ type UserProfile = {
   profileId: number;
 };
 
+export class AuthRequiredError extends Error {
+  constructor() {
+    super('Not logged in to Garmin. Run `npx garmin-connect-mcp login` in a terminal, then retry.');
+    this.name = 'AuthRequiredError';
+  }
+}
+
 export type RequestOptions = {
   method?: string;
   body?: unknown;
@@ -68,8 +75,8 @@ export type RequestOptions = {
 };
 
 export class GarminAuth {
-  private email: string;
-  private password: string;
+  private email?: string;
+  private password?: string;
   private consumer: OAuthConsumer | null = null;
   private oauth1Token: OAuth1Token | null = null;
   private oauth2Token: OAuth2Token | null = null;
@@ -85,7 +92,7 @@ export class GarminAuth {
     return this.profile?.profileId ?? 0;
   }
 
-  constructor(email: string, password: string, promptMfa?: () => Promise<string>) {
+  constructor(email?: string, password?: string, promptMfa?: () => Promise<string>) {
     this.email = email;
     this.password = password;
     this.promptMfa = promptMfa;
@@ -140,6 +147,10 @@ export class GarminAuth {
     throw new Error('Max retries exceeded');
   }
 
+  async connect(): Promise<void> {
+    await this.ensureAuthenticated();
+  }
+
   private async ensureAuthenticated(): Promise<void> {
     if (this.isAuthenticated && this.oauth2Token && !this.isOAuth2Expired() && this.profile) return;
 
@@ -186,7 +197,12 @@ export class GarminAuth {
     this.isAuthenticated = true;
   }
 
-  private async login(): Promise<void> {
+  get isLoggedIn(): boolean {
+    return this.oauth1Token !== null;
+  }
+
+  async login(): Promise<void> {
+    if (!this.email || !this.password) throw new AuthRequiredError();
     console.error('Authenticating with Garmin Connect...');
 
     await this.fetchOAuthConsumer();
@@ -248,8 +264,8 @@ export class GarminAuth {
     const csrfToken = csrfMatch[1];
 
     const loginResponse = await ssoClient.post(SSO_SIGNIN, new URLSearchParams({
-      username: this.email,
-      password: this.password,
+      username: this.email ?? '',
+      password: this.password ?? '',
       embed: 'true',
       _csrf: csrfToken!,
     }).toString(), {

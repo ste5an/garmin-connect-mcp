@@ -1,13 +1,35 @@
-export { registerActivityTools } from './activities.tools';
-export { registerHealthTools } from './health.tools';
-export { registerTrendTools } from './trends.tools';
-export { registerSleepTools } from './sleep.tools';
-export { registerBodyTools } from './body.tools';
-export { registerPerformanceTools } from './performance.tools';
-export { registerProfileTools } from './profile.tools';
-export { registerRangeTools } from './range.tools';
-export { registerSnapshotTools } from './snapshot.tools';
-export { registerTrainingTools } from './training.tools';
-export { registerWellnessTools } from './wellness.tools';
-export { registerChallengeTools } from './challenges.tools';
-export { registerWriteTools } from './write.tools';
+import { activities, activity } from './activities';
+import { body } from './body';
+import { dailyBriefing } from './briefing';
+import type { ToolDefinition } from './define';
+import { assignGear, deleteActivity, logActivity, logBloodPressure, logHydration, logWeight, renameActivity } from './log';
+import { coachPlan } from './plan';
+import { profile } from './profile';
+import { garminApi } from './raw';
+import { recovery } from './recovery';
+import { sleep } from './sleep';
+import { training } from './training';
+import { trends } from './trends';
+import { workouts } from './workouts';
+
+export const tools: ToolDefinition<any>[] = [
+  dailyBriefing,
+  sleep,
+  recovery,
+  activities,
+  activity,
+  training,
+  coachPlan,
+  trends,
+  body,
+  profile,
+  workouts,
+  logWeight,
+  logHydration,
+  logBloodPressure,
+  logActivity,
+  renameActivity,
+  assignGear,
+  deleteActivity,
+  garminApi,
+];

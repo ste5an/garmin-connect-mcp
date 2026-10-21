@@ -1,4 +1,4 @@
-import { GarminAuth, type RequestOptions } from './garmin-auth';
+import { GarminAuth, type RequestOptions } from './auth';
 import {
   USER_SUMMARY_ENDPOINT,
   HEART_RATE_ENDPOINT,
@@ -94,21 +94,42 @@ import {
   GEAR_UNLINK_ENDPOINT,
   DAILY_STEPS_MAX_RANGE_DAYS,
   BIOMETRIC_STATS_ENDPOINT,
-} from '../constants/garmin-endpoints';
+} from './endpoints';
+
+const RANGE_CONCURRENCY = 4;
 
 function todayString(): string {
-  return new Date().toISOString().split('T')[0]!;
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${now.getFullYear()}-${month}-${day}`;
 }
 
 export class GarminClient {
   private auth: GarminAuth;
 
-  constructor(email: string, password: string, promptMfa?: () => Promise<string>) {
+  constructor(email?: string, password?: string, promptMfa?: () => Promise<string>) {
     this.auth = new GarminAuth(email, password, promptMfa);
   }
 
   private request<T>(endpoint: string, options?: RequestOptions): Promise<T> {
     return this.auth.request<T>(endpoint, options);
+  }
+
+  get isLoggedIn(): boolean {
+    return this.auth.isLoggedIn;
+  }
+
+  login(): Promise<void> {
+    return this.auth.login();
+  }
+
+  connect(): Promise<void> {
+    return this.auth.connect();
+  }
+
+  get<T = unknown>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint);
   }
 
   private get displayName(): string {
@@ -131,7 +152,7 @@ export class GarminClient {
     let chunkStart = new Date(start);
     while (chunkStart <= end) {
       const chunkEnd = new Date(chunkStart);
-      chunkEnd.setDate(chunkEnd.getDate() + maxDays - 1);
+      chunkEnd.setUTCDate(chunkEnd.getUTCDate() + maxDays - 1);
       if (chunkEnd > end) chunkEnd.setTime(end.getTime());
 
       chunks.push({
@@ -140,7 +161,7 @@ export class GarminClient {
       });
 
       chunkStart = new Date(chunkEnd);
-      chunkStart.setDate(chunkStart.getDate() + 1);
+      chunkStart.setUTCDate(chunkStart.getUTCDate() + 1);
     }
     return chunks;
   }
@@ -155,7 +176,7 @@ export class GarminClient {
     const end = new Date(endDate);
     while (current <= end) {
       dates.push(current.toISOString().split('T')[0]!);
-      current.setDate(current.getDate() + 1);
+      current.setUTCDate(current.getUTCDate() + 1);
     }
     return dates;
   }
@@ -166,11 +187,16 @@ export class GarminClient {
     fetcher: (date: string) => Promise<unknown>,
   ): Promise<{ date: string; data: unknown }[]> {
     const dates = this.dateRange(startDate, endDate);
-    const results: { date: string; data: unknown }[] = [];
-    for (const date of dates) {
-      const data = await fetcher(date).catch(() => null);
-      results.push({ date, data });
-    }
+    const results: { date: string; data: unknown }[] = new Array(dates.length);
+    let next = 0;
+    const worker = async (): Promise<void> => {
+      while (next < dates.length) {
+        const index = next++;
+        const date = dates[index]!;
+        results[index] = { date, data: await fetcher(date).catch(() => null) };
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(RANGE_CONCURRENCY, dates.length) }, worker));
     return results;
   }
 

@@ -1,220 +1,91 @@
-# garmin-connect-mcp
+# Garmin Connect MCP
 
-MCP server for Garmin Connect. Access your fitness, health, and training data from Claude Code, Claude Desktop, Cursor, Windsurf, or any MCP client.
+Ask your AI assistant about your Garmin data in plain language: sleep, recovery, training load, runs, race predictions and your Garmin Coach plan.
 
-**61 tools** across 7 categories: activities, daily health, trends, sleep, body composition, performance/training, and profile/devices.
+> "How did I sleep and should I do tomorrow's tempo?" · "Compare my last three long runs." · "Is my resting heart rate trending up?"
 
-API endpoints and authentication flow based on [`python-garminconnect`](https://github.com/cyberjunky/python-garminconnect) by [cyberjunky](https://github.com/cyberjunky).
+19 task-level tools instead of a hundred raw endpoints. Responses are trimmed to what matters (a night of sleep is about 600 characters, not 245,000), so answers are fast and cheap.
 
-## Requirements
+## Quick start
 
-- Node.js 20+
-- A Garmin Connect account (email and password)
-
-## Installation
-
-### Claude Code
+Requires Node.js 20 or newer.
 
 ```bash
-claude mcp add garmin -e GARMIN_EMAIL=you@email.com -e GARMIN_PASSWORD=yourpass -- npx -y @nicolasvegam/garmin-connect-mcp
+npx @ste5an/garmin-connect-mcp login
 ```
 
-### Claude Desktop
+Enter your Garmin email and password (and the verification code if you use MFA). Tokens are saved in `~/.garmin-mcp/`; the password is never stored.
 
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
+Then add the server to your client. The `login` command prints the exact snippet; this is the typical form:
+
+```bash
+claude mcp add garmin -- npx -y @ste5an/garmin-connect-mcp
+```
 
 ```json
 {
   "mcpServers": {
-    "garmin": {
-      "command": "npx",
-      "args": ["-y", "@nicolasvegam/garmin-connect-mcp"],
-      "env": {
-        "GARMIN_EMAIL": "you@email.com",
-        "GARMIN_PASSWORD": "yourpass"
-      }
-    }
+    "garmin": { "command": "npx", "args": ["-y", "@ste5an/garmin-connect-mcp"] }
   }
 }
 ```
 
-### Cursor
+Use the JSON form for Claude Desktop (`claude_desktop_config.json`) and Cursor (`.cursor/mcp.json`). Restart the client and ask away.
 
-Add to `.cursor/mcp.json` in your project root:
+| Command | What it does |
+|---|---|
+| `login` | Sign in and save tokens |
+| `status` | Check that the saved login works |
+| `config` | Print the client setup snippet |
+| `logout` | Delete saved tokens |
 
-```json
-{
-  "mcpServers": {
-    "garmin": {
-      "command": "npx",
-      "args": ["-y", "@nicolasvegam/garmin-connect-mcp"],
-      "env": {
-        "GARMIN_EMAIL": "you@email.com",
-        "GARMIN_PASSWORD": "yourpass"
-      }
-    }
-  }
-}
-```
+## Tools
 
-### Windsurf
+| Tool | Answers |
+|---|---|
+| `daily_briefing` | Everything about a day in one call: activity totals, sleep, readiness, HRV, training status, workouts done, coach workouts. Start here. |
+| `sleep` | Score, stages with ratings, bedtime, HRV, SpO2. One night or a range with averages. |
+| `recovery` | Training readiness and its factors, HRV status, resting HR, Body Battery, stress. |
+| `activities` | Recent or date-ranged workouts with pace, heart rate, effect and load. Filter by type. |
+| `activity` | One workout in depth: laps, heart-rate zones, weather, gear, strength sets. |
+| `training` | Training status and load balance, VO2 max, race predictions, endurance and hill scores, lactate threshold. |
+| `coach_plan` | Upcoming Garmin Coach workouts with their interval structure. |
+| `trends` | Daily series with min/max/average for steps, sleep, HRV, resting HR, stress, Body Battery, readiness, SpO2, respiration, VO2 max, weight, intensity minutes. |
+| `body` | Weigh-ins, body composition, blood pressure. |
+| `profile` | Profile, devices, gear, goals, personal records. |
+| `workouts` | Saved workouts and their steps. |
+| `log_weight`, `log_hydration`, `log_blood_pressure`, `log_activity` | Write entries to Garmin Connect. |
+| `rename_activity`, `assign_gear` | Edit activities. |
+| `delete_activity` | Permanent delete; requires explicit confirmation. |
+| `garmin_api` | Read-only escape hatch for any endpoint not covered above. |
 
-Add to `~/.codeium/windsurf/mcp_config.json`:
+Dates accept `YYYY-MM-DD`, `today` and `yesterday`. Ranges take `days`, or `from` and `to`.
 
-```json
-{
-  "mcpServers": {
-    "garmin": {
-      "command": "npx",
-      "args": ["-y", "@nicolasvegam/garmin-connect-mcp"],
-      "env": {
-        "GARMIN_EMAIL": "you@email.com",
-        "GARMIN_PASSWORD": "yourpass"
-      }
-    }
-  }
-}
-```
+## Troubleshooting
 
-### Any MCP Client
+- **"Not logged in"**: run `login` in a terminal. The MCP server cannot prompt for a password or MFA code itself.
+- **"Garmin rejected the saved login"**: tokens expired or the password changed. Run `login` again.
+- **404 for a metric**: your device or account has no data for it. Other tools keep working.
+- **429**: Garmin is rate limiting. Wait a minute.
+- Alternative to `login`: set `GARMIN_EMAIL` and `GARMIN_PASSWORD` in the client's environment. MFA accounts must use `login`.
 
-Run the server with environment variables:
+## Privacy
 
-```bash
-GARMIN_EMAIL=you@email.com GARMIN_PASSWORD=yourpass npx -y @nicolasvegam/garmin-connect-mcp
-```
-
-The server communicates over stdio using the [Model Context Protocol](https://modelcontextprotocol.io/).
-
-## Available Tools
-
-### Activities (12 tools)
-| Tool | Description |
-|------|-------------|
-| `get_activities` | List recent activities with pagination |
-| `get_activities_by_date` | Search activities within a date range |
-| `get_last_activity` | Get the most recent activity |
-| `count_activities` | Get total number of activities |
-| `get_activity` | Summary data for a specific activity |
-| `get_activity_details` | Detailed metrics: HR, pace, elevation time series |
-| `get_activity_splits` | Per-km or per-mile split data |
-| `get_activity_weather` | Weather conditions during activity |
-| `get_activity_hr_zones` | Time in each heart rate zone |
-| `get_activity_exercise_sets` | Strength training sets (reps, weight) |
-| `get_activity_types` | All available activity types |
-| `get_progress_summary` | Fitness stats over a date range by activity type |
-
-### Daily Health (14 tools)
-| Tool | Description |
-|------|-------------|
-| `get_daily_summary` | Full daily summary (steps, calories, distance, etc.) |
-| `get_steps` | Step count for a date |
-| `get_steps_chart` | Intraday step data throughout the day |
-| `get_heart_rate` | Heart rate data (resting, max, zones, time series) |
-| `get_resting_heart_rate` | Resting heart rate for a date |
-| `get_stress` | Stress levels and time series |
-| `get_body_battery` | Body Battery energy levels (date range) |
-| `get_body_battery_events` | Battery charge/drain events for a day |
-| `get_respiration` | Breathing rate data |
-| `get_spo2` | Blood oxygen saturation |
-| `get_intensity_minutes` | Moderate/vigorous intensity minutes |
-| `get_floors` | Floors climbed chart data |
-| `get_hydration` | Daily hydration/water intake |
-| `get_daily_events` | Daily wellness events |
-
-### Trends (4 tools)
-| Tool | Description |
-|------|-------------|
-| `get_daily_steps_range` | Daily step counts over a date range |
-| `get_weekly_steps` | Weekly step aggregates |
-| `get_weekly_stress` | Weekly stress aggregates |
-| `get_weekly_intensity_minutes` | Weekly intensity minutes |
-
-### Sleep (2 tools)
-| Tool | Description |
-|------|-------------|
-| `get_sleep_data` | Sleep stages, score, bed/wake times |
-| `get_sleep_data_raw` | Raw sleep data with HR and SpO2 |
-
-### Body Composition (5 tools)
-| Tool | Description |
-|------|-------------|
-| `get_body_composition` | Weight, BMI, body fat %, muscle mass (date range) |
-| `get_latest_weight` | Most recent weight entry |
-| `get_daily_weigh_ins` | All weigh-ins for a date |
-| `get_weigh_ins` | Weigh-in records over a date range |
-| `get_blood_pressure` | Blood pressure readings (date range) |
-
-### Performance & Training (11 tools)
-| Tool | Description |
-|------|-------------|
-| `get_vo2max` | VO2 Max estimate (running/cycling) |
-| `get_training_readiness` | Training Readiness score |
-| `get_training_status` | Training status and load |
-| `get_hrv` | Heart Rate Variability |
-| `get_endurance_score` | Endurance fitness score |
-| `get_hill_score` | Climbing performance score |
-| `get_race_predictions` | 5K/10K/half/full marathon predictions |
-| `get_fitness_age` | Estimated fitness age |
-| `get_personal_records` | All personal records |
-| `get_lactate_threshold` | Lactate threshold HR and pace |
-| `get_cycling_ftp` | Functional Threshold Power (cycling) |
-
-### Profile & Devices (13 tools)
-| Tool | Description |
-|------|-------------|
-| `get_user_profile` | User social profile and preferences |
-| `get_user_settings` | User settings, measurement system, sleep schedule |
-| `get_devices` | Registered Garmin devices |
-| `get_device_settings` | Settings for a specific device |
-| `get_device_last_used` | Last used device info |
-| `get_primary_training_device` | Primary training device |
-| `get_device_solar_data` | Solar charging data |
-| `get_gear` | All tracked gear/equipment |
-| `get_gear_stats` | Usage stats for a gear item |
-| `get_goals` | Active goals and progress |
-| `get_earned_badges` | Earned badges and achievements |
-| `get_workouts` | Saved workouts |
-| `get_workout` | Specific workout by ID |
-
-## Authentication
-
-Uses Garmin Connect credentials (email/password) via environment variables. OAuth tokens are cached in `~/.garmin-mcp/` to avoid re-authentication on each request.
-
-### MFA (Multi-Factor Authentication)
-
-If your Garmin account has MFA enabled (required for devices with ECG capabilities), you need to run the interactive setup once before using the MCP server:
-
-```bash
-GARMIN_EMAIL='you@email.com' GARMIN_PASSWORD='yourpass' npx -y @nicolasvegam/garmin-connect-mcp setup
-```
-
-This will:
-1. Log in to Garmin Connect
-2. Prompt you for the MFA code sent to your email or authenticator app
-3. Save OAuth tokens to `~/.garmin-mcp/`
-
-After setup, the MCP server will use the saved tokens automatically — no MFA prompt needed until the tokens expire. When they do, simply run the setup command again.
+Everything runs on your machine. The server talks only to Garmin and returns data to your AI client. Tokens live in `~/.garmin-mcp/` with owner-only permissions.
 
 ## Development
 
 ```bash
-git clone https://github.com/Nicolasvegam/garmin-connect-mcp.git
-cd garmin-connect-mcp
 npm install
+npm run typecheck && npm test
 npm run build
+node build/cli.js login
 ```
 
-To test locally:
+Source layout: `src/garmin/` (authentication, API client), `src/tools/` (one file per tool, shared summarizers in `summaries.ts`), `src/cli/` (login and setup commands), `src/server.ts` (MCP wiring).
 
-```bash
-GARMIN_EMAIL=you@email.com GARMIN_PASSWORD=yourpass npm start
-```
+## License and credits
 
-## Credits
+MIT. Garmin authentication follows the flow used by [python-garminconnect](https://github.com/cyberjunky/python-garminconnect) and [garth](https://github.com/matin/garth). The project started from [Nicolasvegam/garmin-connect-mcp](https://github.com/Nicolasvegam/garmin-connect-mcp) (MIT) and was rewritten around task-level tools.
 
-- API endpoints and authentication flow based on [`python-garminconnect`](https://github.com/cyberjunky/python-garminconnect) by [cyberjunky](https://github.com/cyberjunky)
-
-## License
-
-MIT
+Not affiliated with Garmin. Uses unofficial endpoints that can change without notice.
