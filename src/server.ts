@@ -8,6 +8,14 @@ import { VERSION } from './version';
 
 const MAX_RESPONSE_CHARS = 60_000;
 
+export function isWriteEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.GARMIN_ENABLE_WRITE === '1';
+}
+
+export function selectTools(enableWrite: boolean): typeof tools {
+  return tools.filter((tool) => enableWrite || (tool.mode ?? 'read') === 'read');
+}
+
 function toText(data: unknown): string {
   const text = JSON.stringify(compact(data));
   if (text.length <= MAX_RESPONSE_CHARS) return text;
@@ -29,7 +37,7 @@ export function describeError(error: unknown): string {
 export function createServer(client: GarminClient): McpServer {
   const server = new McpServer({ name: 'garmin-connect-mcp', version: VERSION });
 
-  for (const tool of tools) {
+  for (const tool of selectTools(isWriteEnabled())) {
     const isRead = (tool.mode ?? 'read') === 'read';
     server.registerTool(
       tool.name,

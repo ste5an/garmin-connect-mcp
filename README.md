@@ -54,7 +54,7 @@ Use the JSON form for Claude Desktop (`claude_desktop_config.json`) and Cursor (
 | `body` | Weigh-ins, body composition, blood pressure. |
 | `profile` | Profile, devices, gear, goals, personal records. |
 | `workouts` | Saved workouts and their steps. |
-| `log_weight`, `log_hydration`, `log_blood_pressure`, `log_activity` | Write entries to Garmin Connect. |
+| `log_weight`, `log_hydration`, `log_blood_pressure`, `log_activity` | Write entries to Garmin Connect. Only registered when `GARMIN_ENABLE_WRITE=1` is set in the server env. |
 | `rename_activity`, `assign_gear` | Edit activities. |
 | `delete_activity` | Permanent delete; requires explicit confirmation. |
 | `garmin_api` | Read-only escape hatch for any endpoint not covered above. |
