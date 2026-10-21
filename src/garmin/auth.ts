@@ -74,6 +74,11 @@ export type RequestOptions = {
   headers?: Record<string, string>;
 };
 
+function describeRefreshFailure(error: unknown): string {
+  if (axios.isAxiosError(error)) return `HTTP ${error.response?.status ?? 'error'} ${error.code ?? ''}`.trim();
+  return error instanceof Error ? error.name : 'unknown error';
+}
+
 export class GarminAuth {
   private email?: string;
   private password?: string;
@@ -189,7 +194,7 @@ export class GarminAuth {
         this.isAuthenticated = true;
         return;
       } catch (error) {
-        console.error('OAuth2 refresh failed, will re-login:', error);
+        console.error('OAuth2 refresh failed, will re-login:', describeRefreshFailure(error));
       }
     }
 
