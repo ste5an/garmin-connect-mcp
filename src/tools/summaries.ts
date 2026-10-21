@@ -90,7 +90,13 @@ export function summarizeDay(raw: Raw | null | undefined) {
     stepGoal: raw.dailyStepGoal,
     distanceKm: km(raw.totalDistanceMeters, 1),
     floorsClimbed: round(raw.floorsAscended),
-    calories: { total: raw.totalKilocalories, active: raw.activeKilocalories },
+    calories: {
+      total: raw.totalKilocalories,
+      active: raw.activeKilocalories,
+      consumed: raw.includesCalorieConsumedData ? raw.consumedKilocalories : undefined,
+      goal: raw.includesCalorieConsumedData ? raw.netCalorieGoal : undefined,
+      remaining: raw.includesCalorieConsumedData ? raw.remainingKilocalories : undefined,
+    },
     heartRate: { resting: raw.restingHeartRate, min: raw.minHeartRate, max: raw.maxHeartRate },
     stress: { avg: raw.averageStressLevel, max: raw.maxStressLevel },
     bodyBattery: {

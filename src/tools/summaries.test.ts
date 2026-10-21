@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { summarizeCoachTask, summarizeReadiness, summarizeSleep } from './summaries';
+import { summarizeCoachTask, summarizeDay, summarizeReadiness, summarizeSleep } from './summaries';
 
 describe('summarizeSleep', () => {
   const raw = {
@@ -75,5 +75,19 @@ describe('summarizeCoachTask', () => {
       taskWorkout: { restDay: true, trainingEffectLabel: 'INVALID' },
     });
     expect(rest).toEqual({ date: '2026-10-24', workout: 'Rest' });
+  });
+});
+
+describe('summarizeDay calories', () => {
+  const base = { calendarDate: '2026-10-21', totalKilocalories: 1383, activeKilocalories: 389 };
+
+  it('includes consumed calories when a food log is linked', () => {
+    const day = summarizeDay({ ...base, includesCalorieConsumedData: true, consumedKilocalories: 481, netCalorieGoal: 1670, remainingKilocalories: 1578 });
+    expect(day?.calories).toEqual({ total: 1383, active: 389, consumed: 481, goal: 1670, remaining: 1578 });
+  });
+
+  it('omits intake fields when no food log is linked', () => {
+    const day = summarizeDay({ ...base, includesCalorieConsumedData: false, remainingKilocalories: 389 });
+    expect(day?.calories).toEqual({ total: 1383, active: 389 });
   });
 });
