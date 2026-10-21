@@ -67,7 +67,7 @@ Dates accept `YYYY-MM-DD`, `today` and `yesterday`. Ranges take `days`, or `from
 - **"Garmin rejected the saved login"**: tokens expired or the password changed. Run `login` again.
 - **404 for a metric**: your device or account has no data for it. Other tools keep working.
 - **429**: Garmin is rate limiting. Wait a minute.
-- Alternative to `login`: set `GARMIN_EMAIL` and `GARMIN_PASSWORD` in the client's environment. MFA accounts must use `login`.
+- Use `login` rather than putting `GARMIN_PASSWORD` in a client config file, where it would sit in plain text.
 
 ## Privacy
 
