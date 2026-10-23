@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { resolveDate } from './dates';
 import { defineTool, gather } from './define';
 import { clock, compact, round } from './format';
-import { summarizeActivity, summarizeActivityDetail, summarizeLaps } from './summaries';
+import { summarizeActivity, summarizeActivityDetail, summarizeIntervals, summarizeLaps } from './summaries';
 
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 50;
@@ -61,6 +61,7 @@ export const activity = defineTool({
     return compact({
       ...summarizeActivityDetail(data.summary as any),
       laps: data.laps ? summarizeLaps(data.laps as any) : undefined,
+      intervals: data.laps ? summarizeIntervals(data.laps as any) : undefined,
       hrZones: zones,
       weather: weather && {
         tempF: weather.temp,

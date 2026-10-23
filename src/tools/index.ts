@@ -10,6 +10,7 @@ import { recovery } from './recovery';
 import { sleep } from './sleep';
 import { training } from './training';
 import { trends } from './trends';
+import { weeklySummary } from './weekly';
 import { workouts } from './workouts';
 
 export const tools: ToolDefinition<any>[] = [
@@ -21,6 +22,7 @@ export const tools: ToolDefinition<any>[] = [
   training,
   coachPlan,
   trends,
+  weeklySummary,
   body,
   profile,
   workouts,

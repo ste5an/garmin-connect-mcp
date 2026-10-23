@@ -1,6 +1,6 @@
 # Garmin Connect MCP
 
-MCP server for Garmin Connect in TypeScript. 19 task-level tools that return trimmed, human-readable data.
+MCP server for Garmin Connect in TypeScript. 20 task-level tools that return trimmed, human-readable data.
 
 ## Layout
 
