@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { summarizeCoachTask, summarizeDay, summarizeReadiness, summarizeSleep } from './summaries';
+import { summarizeCoachTask, summarizeDay, summarizeIntervals, summarizeReadiness, summarizeSleep } from './summaries';
 
 describe('summarizeSleep', () => {
   const raw = {
@@ -89,5 +89,36 @@ describe('summarizeDay calories', () => {
   it('omits intake fields when no food log is linked', () => {
     const day = summarizeDay({ ...base, includesCalorieConsumedData: false, remainingKilocalories: 389 });
     expect(day?.calories).toEqual({ total: 1383, active: 389 });
+  });
+});
+
+describe('summarizeIntervals', () => {
+  const lap = (step: number, type: string, distance: number, duration: number, hr: number) => ({
+    wktStepIndex: step,
+    intensityType: type,
+    distance,
+    duration,
+    averageHR: hr,
+    maxHR: hr + 5,
+  });
+
+  it('merges laps of one workout step and rolls up work and recovery', () => {
+    const result = summarizeIntervals({
+      lapDTOs: [
+        lap(0, 'WARMUP', 1000, 360, 120),
+        lap(1, 'INTERVAL', 1000, 296, 160),
+        lap(1, 'INTERVAL', 620, 184, 162),
+        lap(2, 'RECOVERY', 300, 180, 140),
+        lap(3, 'INTERVAL', 1620, 480, 165),
+      ],
+    });
+    expect(result?.steps).toHaveLength(4);
+    expect(result?.steps[1]).toMatchObject({ type: 'interval', km: 1.62, time: '8:00', pacePerKm: '4:56' });
+    expect(result?.work).toMatchObject({ count: 2 });
+    expect(result?.recovery).toMatchObject({ count: 1, avgHr: 140 });
+  });
+
+  it('returns nothing for a steady run without intervals', () => {
+    expect(summarizeIntervals({ lapDTOs: [{ intensityType: 'ACTIVE', distance: 1000, duration: 300 }] })).toBeUndefined();
   });
 });

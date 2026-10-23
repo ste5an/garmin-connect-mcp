@@ -195,6 +195,56 @@ export function summarizeLaps(raw: Raw | null | undefined) {
   );
 }
 
+export function summarizeIntervals(raw: Raw | null | undefined) {
+  const laps: Raw[] = raw?.lapDTOs ?? [];
+  const groups: { key: string; type: string; laps: Raw[] }[] = [];
+  for (const lap of laps) {
+    const type = String(lap.intensityType ?? '').toLowerCase();
+    const key = lap.wktStepIndex != null ? `step:${lap.wktStepIndex}` : `type:${type}`;
+    const last = groups[groups.length - 1];
+    if (last && last.key === key) last.laps.push(lap);
+    else groups.push({ key, type, laps: [lap] });
+  }
+  if (!groups.some((group) => group.type === 'interval' || group.type === 'recovery')) return undefined;
+  const steps = groups.map((group, index) => {
+    const meters = group.laps.reduce((sum, lap) => sum + (lap.distance ?? 0), 0);
+    const seconds = group.laps.reduce((sum, lap) => sum + (lap.duration ?? 0), 0);
+    const withHr = group.laps.filter((lap) => lap.averageHR != null);
+    const hrSeconds = withHr.reduce((sum, lap) => sum + (lap.duration ?? 0), 0);
+    const hrWeighted = withHr.reduce((sum, lap) => sum + lap.averageHR * (lap.duration ?? 0), 0);
+    const maxHr = Math.max(0, ...group.laps.map((lap) => lap.maxHR ?? 0));
+    return {
+      step: index + 1,
+      type: group.type || undefined,
+      meters,
+      seconds,
+      km: km(meters),
+      time: clock(seconds),
+      pacePerKm: seconds > 0 ? pacePerKm(meters / seconds) : undefined,
+      avgHr: hrSeconds > 0 ? round(hrWeighted / hrSeconds) : undefined,
+      maxHr: maxHr > 0 ? round(maxHr) : undefined,
+    };
+  });
+  const rollup = (type: string) => {
+    const matching = steps.filter((step) => step.type === type);
+    if (!matching.length) return undefined;
+    const meters = matching.reduce((sum, step) => sum + step.meters, 0);
+    const seconds = matching.reduce((sum, step) => sum + step.seconds, 0);
+    const withHr = matching.filter((step) => step.avgHr != null);
+    const hrSeconds = withHr.reduce((sum, step) => sum + step.seconds, 0);
+    return {
+      count: matching.length,
+      pacePerKm: seconds > 0 ? pacePerKm(meters / seconds) : undefined,
+      avgHr: hrSeconds > 0 ? round(withHr.reduce((sum, step) => sum + step.avgHr! * step.seconds, 0) / hrSeconds) : undefined,
+    };
+  };
+  return compact({
+    work: rollup('interval'),
+    recovery: rollup('recovery'),
+    steps: steps.map(({ meters, seconds, ...step }) => step),
+  });
+}
+
 export function summarizeTrainingStatus(raw: Raw | null | undefined) {
   if (!raw) return null;
   const status = Object.values<Raw>(raw.mostRecentTrainingStatus?.latestTrainingStatusData ?? {})[0];

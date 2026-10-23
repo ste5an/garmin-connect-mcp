@@ -4,7 +4,7 @@ Ask your AI assistant about your Garmin data in plain language: sleep, recovery,
 
 > "How did I sleep and should I do tomorrow's tempo?" · "Compare my last three long runs." · "Is my resting heart rate trending up?"
 
-19 task-level tools instead of a hundred raw endpoints. Responses are trimmed to what matters (a night of sleep is about 600 characters, not 245,000), so answers are fast and cheap.
+20 task-level tools instead of a hundred raw endpoints. Responses are trimmed to what matters (a night of sleep is about 600 characters, not 245,000), so answers are fast and cheap.
 
 ## Quick start
 
@@ -47,17 +47,18 @@ Use the JSON form for Claude Desktop (`claude_desktop_config.json`) and Cursor (
 | `sleep` | Score, stages with ratings, bedtime, HRV, SpO2. One night or a range with averages. |
 | `recovery` | Training readiness and its factors, HRV status, resting HR, Body Battery, stress. |
 | `activities` | Recent or date-ranged workouts with pace, heart rate, effect and load. Filter by type. |
-| `activity` | One workout in depth: laps, heart-rate zones, weather, gear, strength sets. |
+| `activity` | One workout in depth: laps, interval work and recovery rollups, heart-rate zones, weather, gear, strength sets. |
 | `training` | Training status and load balance, VO2 max, race predictions, endurance and hill scores, lactate threshold. |
 | `coach_plan` | Upcoming Garmin Coach workouts with their interval structure. |
 | `trends` | Daily series with min/max/average for steps, sleep, HRV, resting HR, stress, Body Battery, readiness, SpO2, respiration, VO2 max, weight, intensity minutes. |
+| `weekly_summary` | Per-week run kilometres, longest run and its share of the week, strength sessions, total time, load and week-over-week change. |
 | `body` | Weigh-ins, body composition, blood pressure. |
 | `profile` | Profile, devices, gear, goals, personal records. |
 | `workouts` | Saved workouts and their steps. |
 | `log_weight`, `log_hydration`, `log_blood_pressure`, `log_activity` | Write entries to Garmin Connect. Only registered when `GARMIN_ENABLE_WRITE=1` is set in the server env. |
 | `rename_activity`, `assign_gear` | Edit activities. |
 | `delete_activity` | Permanent delete; requires explicit confirmation. |
-| `garmin_api` | Read-only escape hatch for any endpoint not covered above. |
+| `garmin_api` | Read-only escape hatch for any endpoint not covered above. Names, ids, emails and GPS coordinates are redacted unless `GARMIN_RAW_UNREDACTED=1`. |
 
 Dates accept `YYYY-MM-DD`, `today` and `yesterday`. Ranges take `days`, or `from` and `to`.
 
