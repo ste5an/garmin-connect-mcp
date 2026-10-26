@@ -1,22 +1,25 @@
 # Garmin Connect MCP
 
-Ask your AI assistant about your Garmin data in plain language: sleep, recovery, training load, runs, race predictions and your Garmin Coach plan.
+Ask your AI assistant about your Garmin data in plain language: sleep, recovery, HRV, runs, training load and trends.
 
-> "How did I sleep and should I do tomorrow's tempo?" · "Compare my last three long runs." · "Is my resting heart rate trending up?"
+> "How did I sleep and should I go easy today?" · "Compare my last three long runs." · "Is my resting heart rate trending up?"
 
-20 task-level tools instead of a hundred raw endpoints. Responses are trimmed to what matters (a night of sleep is about 600 characters, not 245,000), so answers are fast and cheap.
+Ten task-level tools on top of Garmin's official Personal API. Responses are trimmed to what matters (a night of sleep is about 500 characters, not 245,000), so answers are fast and cheap. Everything is read-only.
 
 ## Quick start
 
 Requires Node.js 20 or newer.
 
+1. Create a Personal API key at <https://connect.garmin.com/app/settings/personalApiToken>. Garmin shows it once.
+2. Save it:
+
 ```bash
-npx @ste5an/garmin-connect-mcp login
+npx @ste5an/garmin-connect-mcp setup
 ```
 
-Enter your Garmin email and password (and the verification code if you use MFA). Tokens are saved in `~/.garmin-mcp/`; the password is never stored.
+The key is stored in `~/.config/garmin/connect-personal-api-key` (owner-only). The server exchanges it for a 24-hour access token on demand and caches the token in `~/.garmin-mcp/`.
 
-Then add the server to your client. The `login` command prints the exact snippet; this is the typical form:
+3. Add the server to your client. `setup` prints the exact snippet; this is the typical form:
 
 ```bash
 claude mcp add garmin -- npx -y @ste5an/garmin-connect-mcp
@@ -34,45 +37,43 @@ Use the JSON form for Claude Desktop (`claude_desktop_config.json`) and Cursor (
 
 | Command | What it does |
 |---|---|
-| `login` | Sign in and save tokens |
-| `status` | Check that the saved login works |
+| `setup` | Save your key and check that it works |
+| `status` | Check that the saved key works |
 | `config` | Print the client setup snippet |
-| `logout` | Delete saved tokens |
+| `logout` | Delete the cached access token (the key file is kept) |
+
+Set `GARMIN_PERSONAL_API_KEY_FILE` to read the key from another path.
 
 ## Tools
 
 | Tool | Answers |
 |---|---|
-| `daily_briefing` | Everything about a day in one call: activity totals, sleep, readiness, HRV, training status, workouts done, coach workouts. Start here. |
-| `sleep` | Score, stages with ratings, bedtime, HRV, SpO2. One night or a range with averages. |
-| `recovery` | Training readiness and its factors, HRV status, resting HR, Body Battery, stress. |
-| `activities` | Recent or date-ranged workouts with pace, heart rate, effect and load. Filter by type. |
-| `activity` | One workout in depth: laps, interval work and recovery rollups, heart-rate zones, weather, gear, strength sets. |
-| `training` | Training status and load balance, VO2 max, race predictions, endurance and hill scores, lactate threshold. |
-| `coach_plan` | Upcoming Garmin Coach workouts with their interval structure. |
-| `trends` | Daily series with min/max/average for steps, sleep, HRV, resting HR, stress, Body Battery, readiness, SpO2, respiration, VO2 max, weight, intensity minutes. |
+| `daily_briefing` | A day in one call: steps, calories, heart rate, stress, Body Battery, hydration, sleep, HRV, workouts done. Start here. |
+| `sleep` | Score, stages with ratings, bedtime, SpO2, respiration, sleep need. One night or a range with averages. |
+| `recovery` | HRV status against the balanced range, resting HR, Body Battery, stress, sleep score. A day or a trend. |
+| `activities` | Recent or date-ranged workouts with distance, duration, pace, average and max heart rate, time in each heart-rate zone, cadence, power, elevation, calories, training effect and load. Filter by type. |
+| `activity` | One workout in depth: moving time, pace, heart rate, cadence, stride length, ground contact time, vertical oscillation, elevation, training effect and the structured workout it followed. |
+| `trends` | Daily series with min/max/average for steps, sleep, HRV, resting HR, stress, Body Battery, SpO2, respiration, weight, intensity minutes. |
 | `weekly_summary` | Per-week run kilometres, longest run and its share of the week, strength sessions, total time, load and week-over-week change. |
-| `body` | Weigh-ins, body composition, blood pressure. |
-| `profile` | Profile, devices, gear, goals, personal records. |
-| `workouts` | Saved workouts and their steps. |
-| `log_weight`, `log_hydration`, `log_blood_pressure`, `log_activity` | Write entries to Garmin Connect. Only registered when `GARMIN_ENABLE_WRITE=1` is set in the server env. |
-| `rename_activity`, `assign_gear` | Edit activities. |
-| `delete_activity` | Permanent delete; requires explicit confirmation. |
-| `garmin_api` | Read-only escape hatch for any endpoint not covered above. Names, ids, emails and GPS coordinates are redacted unless `GARMIN_RAW_UNREDACTED=1`. |
+| `body` | Weigh-ins and body composition. |
+| `profile` | Units, time zone, heart-rate zones, max/resting/threshold heart rate, fitness age. |
+| `garmin_api` | Read-only escape hatch for any other Personal API path. Names, ids, emails and GPS coordinates are redacted unless `GARMIN_RAW_UNREDACTED=1`. |
 
 Dates accept `YYYY-MM-DD`, `today` and `yesterday`. Ranges take `days`, or `from` and `to`.
 
+The Personal API does not offer lap or split data (so no interval work/recovery breakdown), weather, training readiness, training status, VO2 max, race predictions, Garmin Coach plans, saved workouts, gear, devices, goals, personal records, blood pressure or any write access, so those are not available.
+
 ## Troubleshooting
 
-- **"Not logged in"**: run `login` in a terminal. The MCP server cannot prompt for a password or MFA code itself.
-- **"Garmin rejected the saved login"**: tokens expired or the password changed. Run `login` again.
+- **"No Garmin Personal API key found"**: run `setup`, or create the key file by hand.
+- **"Garmin rejected the Personal API key"**: the key expired (30 days to 1 year, your choice) or was deleted. Create a new one and run `setup`.
 - **404 for a metric**: your device or account has no data for it. Other tools keep working.
 - **429**: Garmin is rate limiting. Wait a minute.
-- Use `login` rather than putting `GARMIN_PASSWORD` in a client config file, where it would sit in plain text.
+- Access tokens last 24 hours and have no refresh token; the server fetches a new one automatically.
 
 ## Privacy
 
-Everything runs on your machine. The server talks only to Garmin and returns data to your AI client. Tokens live in `~/.garmin-mcp/` with owner-only permissions.
+Everything runs on your machine. The server talks only to `personal.connectapi.garmin.com` and returns data to your AI client. The key and cached token are stored with owner-only permissions.
 
 ## Development
 
@@ -80,13 +81,13 @@ Everything runs on your machine. The server talks only to Garmin and returns dat
 npm install
 npm run typecheck && npm test
 npm run build
-node build/cli.js login
+node build/cli.js setup
 ```
 
-Source layout: `src/garmin/` (authentication, API client), `src/tools/` (one file per tool, shared summarizers in `summaries.ts`), `src/cli/` (login and setup commands), `src/server.ts` (MCP wiring).
+Source layout: `src/garmin/` (key-to-token authentication, API client), `src/tools/` (one file per tool, shared summarizers in `summaries.ts`), `src/cli/` (setup and status commands), `src/server.ts` (MCP wiring).
 
 ## License and credits
 
-MIT. Garmin authentication follows the flow used by [python-garminconnect](https://github.com/cyberjunky/python-garminconnect) and [garth](https://github.com/matin/garth). The project started from [Nicolasvegam/garmin-connect-mcp](https://github.com/Nicolasvegam/garmin-connect-mcp) (MIT) and was rewritten around task-level tools.
+MIT. Authentication and endpoints follow Garmin's [Personal API reference client](https://github.com/garmin/connect-personal-api-python). The project started from [Nicolasvegam/garmin-connect-mcp](https://github.com/Nicolasvegam/garmin-connect-mcp) (MIT) and was rewritten around task-level tools.
 
-Not affiliated with Garmin. Uses unofficial endpoints that can change without notice.
+Not affiliated with Garmin.

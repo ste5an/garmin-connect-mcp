@@ -8,14 +8,6 @@ import { VERSION } from './version';
 
 const MAX_RESPONSE_CHARS = 60_000;
 
-export function isWriteEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.GARMIN_ENABLE_WRITE === '1';
-}
-
-export function selectTools(enableWrite: boolean): typeof tools {
-  return tools.filter((tool) => enableWrite || (tool.mode ?? 'read') === 'read');
-}
-
 function toText(data: unknown): string {
   const text = JSON.stringify(compact(data));
   if (text.length <= MAX_RESPONSE_CHARS) return text;
@@ -26,7 +18,7 @@ export function describeError(error: unknown): string {
   if (error instanceof AuthRequiredError) return error.message;
   if (axios.isAxiosError(error)) {
     const status = error.response?.status;
-    if (status === 401 || status === 403) return 'Garmin rejected the saved login. Run `npx garmin-connect-mcp login` again.';
+    if (status === 401 || status === 403) return 'Garmin rejected the Personal API key. It may have expired or been deleted. Create a new key, then run `npx garmin-connect-mcp setup`.';
     if (status === 404) return 'Garmin has no data for that request (404). The date may have no data or your device may not support this metric.';
     if (status === 429) return 'Garmin is rate limiting requests (429). Wait a minute and retry.';
     return `Garmin request failed${status ? ` (${status})` : ''}: ${error.message}`;
@@ -37,20 +29,14 @@ export function describeError(error: unknown): string {
 export function createServer(client: GarminClient): McpServer {
   const server = new McpServer({ name: 'garmin-connect-mcp', version: VERSION });
 
-  for (const tool of selectTools(isWriteEnabled())) {
-    const isRead = (tool.mode ?? 'read') === 'read';
+  for (const tool of tools) {
     server.registerTool(
       tool.name,
       {
         title: tool.title,
         description: tool.description,
         inputSchema: tool.input,
-        annotations: {
-          readOnlyHint: isRead,
-          destructiveHint: tool.mode === 'destructive',
-          idempotentHint: isRead,
-          openWorldHint: true,
-        },
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       },
       async (args: Record<string, unknown>) => {
         try {

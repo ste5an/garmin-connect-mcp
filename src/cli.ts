@@ -1,15 +1,11 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { fail, login, logout, printConfig, printHelp, status } from './cli/commands';
+import { fail, logout, printConfig, printHelp, setup, status } from './cli/commands';
 import { GarminClient } from './garmin/client';
 import { createServer } from './server';
 import { VERSION } from './version';
 
 async function serve(): Promise<void> {
-  const client = new GarminClient(process.env.GARMIN_EMAIL, process.env.GARMIN_PASSWORD);
-  if (!client.isLoggedIn && !process.env.GARMIN_EMAIL) {
-    console.error('Not logged in yet. Run `npx garmin-connect-mcp login` in a terminal.');
-  }
-  await createServer(client).connect(new StdioServerTransport());
+  await createServer(new GarminClient()).connect(new StdioServerTransport());
   console.error(`Garmin Connect MCP ${VERSION} running on stdio`);
 }
 
@@ -21,9 +17,9 @@ async function main(): Promise<void> {
       return serve();
     case 'serve':
       return serve();
-    case 'login':
     case 'setup':
-      return login();
+    case 'login':
+      return setup();
     case 'status':
       return status();
     case 'logout':

@@ -5,67 +5,34 @@ type Raw = Record<string, any>;
 const PACE_TYPES = /running|walking|hiking/;
 
 export function summarizeSleep(raw: Raw | null | undefined) {
-  const sleep = raw?.dailySleepDTO;
-  if (!sleep?.sleepTimeSeconds) return null;
-  const scores = sleep.sleepScores ?? {};
+  if (!raw?.sleepTimeSeconds) return null;
+  const scores = raw.sleepScores ?? {};
   return compact({
-    date: sleep.calendarDate,
+    date: raw.calendarDate,
     score: scores.overall?.value,
     rating: label(scores.overall?.qualifierKey),
-    asleep: hoursMinutes(sleep.sleepTimeSeconds),
+    asleep: hoursMinutes(raw.sleepTimeSeconds),
     minutes: {
-      total: minutes(sleep.sleepTimeSeconds),
-      deep: minutes(sleep.deepSleepSeconds),
-      light: minutes(sleep.lightSleepSeconds),
-      rem: minutes(sleep.remSleepSeconds),
-      awake: minutes(sleep.awakeSleepSeconds),
-      needed: (sleep.sleepNeed ?? raw?.sleepNeed)?.actual,
+      total: minutes(raw.sleepTimeSeconds),
+      deep: minutes(raw.deepSleepSeconds),
+      light: minutes(raw.lightSleepSeconds),
+      rem: minutes(raw.remSleepSeconds),
+      awake: minutes(raw.awakeSleepSeconds),
+      needed: raw.sleepNeed?.actual,
     },
     stagePercent: {
       deep: scores.deepPercentage && { value: scores.deepPercentage.value, rating: label(scores.deepPercentage.qualifierKey) },
       light: scores.lightPercentage && { value: scores.lightPercentage.value, rating: label(scores.lightPercentage.qualifierKey) },
       rem: scores.remPercentage && { value: scores.remPercentage.value, rating: label(scores.remPercentage.qualifierKey) },
     },
-    bedtime: wallClock(sleep.sleepStartTimestampLocal),
-    wakeTime: wallClock(sleep.sleepEndTimestampLocal),
-    awakenings: sleep.awakeCount,
-    avgHr: sleep.avgHeartRate,
-    restingHr: raw?.restingHeartRate,
-    overnightHrv: raw?.avgOvernightHrv,
-    hrvStatus: label(raw?.hrvStatus),
-    avgStress: sleep.avgSleepStress,
-    bodyBatteryGain: raw?.bodyBatteryChange,
-    spo2: { avg: sleep.averageSpO2Value, lowest: sleep.lowestSpO2Value },
-    respiration: { avg: sleep.averageRespirationValue, lowest: sleep.lowestRespirationValue, highest: sleep.highestRespirationValue },
-    skinTempDeviationC: round(raw?.avgSkinTempDeviationC, 1),
-    feedback: label(sleep.sleepScoreFeedback),
-  });
-}
-
-export function latestReadiness(raw: unknown): Raw | null {
-  if (!Array.isArray(raw) || raw.length === 0) return null;
-  return [...raw].sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)))[0];
-}
-
-export function summarizeReadiness(raw: unknown) {
-  const entry = latestReadiness(raw);
-  if (!entry) return null;
-  return compact({
-    date: entry.calendarDate,
-    score: entry.score,
-    level: label(entry.level),
-    headline: label(entry.feedbackShort),
-    recoveryHours: round(entry.recoveryTime / 60, 1),
-    acuteLoad: entry.acuteLoad,
-    hrvWeeklyAvg: entry.hrvWeeklyAverage,
-    factors: {
-      sleep: label(entry.sleepScoreFactorFeedback),
-      sleepHistory: label(entry.sleepHistoryFactorFeedback),
-      recovery: label(entry.recoveryTimeFactorFeedback),
-      load: label(entry.acwrFactorFeedback),
-      stress: label(entry.stressHistoryFactorFeedback),
-      hrv: label(entry.hrvFactorFeedback),
-    },
+    bedtime: wallClock(raw.sleepStartTimestampLocal),
+    wakeTime: wallClock(raw.sleepEndTimestampLocal),
+    awakenings: raw.awakeCount,
+    avgHr: raw.avgHeartRate,
+    avgStress: raw.avgSleepStress,
+    spo2: { avg: raw.averageSpO2Value, lowest: raw.lowestSpO2Value },
+    respiration: { avg: raw.averageRespirationValue, lowest: raw.lowestRespirationValue, highest: raw.highestRespirationValue },
+    feedback: label(raw.sleepScoreFeedback),
   });
 }
 
@@ -84,35 +51,44 @@ export function summarizeHrv(raw: Raw | null | undefined) {
 
 export function summarizeDay(raw: Raw | null | undefined) {
   if (!raw?.calendarDate) return null;
+  const { movement, calories, heartRate, stress, bodyBattery, intensityMinutes, pulseOx, respiration, hydration } = raw;
   return compact({
     date: raw.calendarDate,
-    steps: raw.totalSteps,
-    stepGoal: raw.dailyStepGoal,
-    distanceKm: km(raw.totalDistanceMeters, 1),
-    floorsClimbed: round(raw.floorsAscended),
+    steps: movement?.steps?.value,
+    stepGoal: movement?.steps?.goal,
+    distanceKm: km(movement?.steps?.distanceInMeters, 1),
+    floorsClimbed: round(movement?.floorsAscended?.value),
     calories: {
-      total: raw.totalKilocalories,
-      active: raw.activeKilocalories,
-      consumed: raw.includesCalorieConsumedData ? raw.consumedKilocalories : undefined,
-      goal: raw.includesCalorieConsumedData ? raw.netCalorieGoal : undefined,
-      remaining: raw.includesCalorieConsumedData ? raw.remainingKilocalories : undefined,
+      total: calories?.burnedTotal,
+      active: calories?.burnedActive,
+      consumed: calories?.consumedValue,
+      goal: calories?.consumedGoal,
+      remaining: calories?.consumedRemaining,
     },
-    heartRate: { resting: raw.restingHeartRate, min: raw.minHeartRate, max: raw.maxHeartRate },
-    stress: { avg: raw.averageStressLevel, max: raw.maxStressLevel },
+    heartRate: { resting: heartRate?.restingValue, min: heartRate?.minValue, max: heartRate?.maxValue },
+    stress: { avg: stress?.avgLevel, max: stress?.maxLevel, rating: label(stress?.qualifier) },
     bodyBattery: {
-      atWake: raw.bodyBatteryAtWakeTime,
-      high: raw.bodyBatteryHighestValue,
-      low: raw.bodyBatteryLowestValue,
-      now: raw.bodyBatteryMostRecentValue,
+      high: bodyBattery?.maxValue,
+      low: bodyBattery?.minValue,
+      now: bodyBattery?.latestValue,
+      charged: bodyBattery?.chargedValue,
+      drained: bodyBattery?.drainedValue,
     },
-    intensityMinutes: {
-      moderate: raw.moderateIntensityMinutes,
-      vigorous: raw.vigorousIntensityMinutes,
-      goal: raw.intensityMinutesGoal,
-    },
-    spo2: { avg: raw.averageSpo2, lowest: raw.lowestSpo2 },
-    respirationWaking: raw.avgWakingRespirationValue,
+    intensityMinutes: { moderate: intensityMinutes?.moderate, vigorous: intensityMinutes?.vigorous, goal: intensityMinutes?.goal },
+    spo2: { avg: pulseOx?.avgValue, lowest: pulseOx?.minValue },
+    respiration: { avg: respiration?.avgValue, max: respiration?.maxValue, min: respiration?.minValue },
+    hydration: { ml: hydration?.consumedInMl, goalMl: hydration?.goalInMl },
   });
+}
+
+const HR_ZONE_COUNT = 5;
+
+function hrZones(raw: Raw) {
+  const zones = Array.from({ length: HR_ZONE_COUNT }, (_, index) => ({
+    zone: index + 1,
+    time: clock(raw[`hrTimeInZone_${index + 1}`]),
+  }));
+  return zones.some((zone) => zone.time !== undefined && zone.time !== '0:00') ? zones : undefined;
 }
 
 export function summarizeActivity(raw: Raw) {
@@ -135,6 +111,7 @@ export function summarizeActivity(raw: Raw) {
     trainingEffect: { aerobic: round(raw.aerobicTrainingEffect, 1), anaerobic: round(raw.anaerobicTrainingEffect, 1) },
     effectLabel: label(raw.trainingEffectLabel),
     load: round(raw.activityTrainingLoad),
+    hrZones: hrZones(raw),
     location: raw.locationName,
   });
 }
@@ -175,112 +152,5 @@ export function summarizeActivityDetail(raw: Raw) {
     steps: summary.steps,
     workoutFeel: summary.directWorkoutFeel,
     workoutRpe: summary.directWorkoutRpe,
-  });
-}
-
-export function summarizeLaps(raw: Raw | null | undefined) {
-  const laps: Raw[] = raw?.lapDTOs ?? [];
-  return laps.map((lap, index) =>
-    compact({
-      lap: index + 1,
-      km: km(lap.distance),
-      time: clock(lap.duration),
-      pacePerKm: pacePerKm(lap.averageSpeed),
-      avgHr: round(lap.averageHR),
-      maxHr: round(lap.maxHR),
-      avgPowerW: round(lap.averagePower),
-      cadence: round(lap.averageRunCadence),
-      elevationGainM: round(lap.elevationGain),
-    }),
-  );
-}
-
-export function summarizeIntervals(raw: Raw | null | undefined) {
-  const laps: Raw[] = raw?.lapDTOs ?? [];
-  const groups: { key: string; type: string; laps: Raw[] }[] = [];
-  for (const lap of laps) {
-    const type = String(lap.intensityType ?? '').toLowerCase();
-    const key = lap.wktStepIndex != null ? `step:${lap.wktStepIndex}` : `type:${type}`;
-    const last = groups[groups.length - 1];
-    if (last && last.key === key) last.laps.push(lap);
-    else groups.push({ key, type, laps: [lap] });
-  }
-  if (!groups.some((group) => group.type === 'interval' || group.type === 'recovery')) return undefined;
-  const steps = groups.map((group, index) => {
-    const meters = group.laps.reduce((sum, lap) => sum + (lap.distance ?? 0), 0);
-    const seconds = group.laps.reduce((sum, lap) => sum + (lap.duration ?? 0), 0);
-    const withHr = group.laps.filter((lap) => lap.averageHR != null);
-    const hrSeconds = withHr.reduce((sum, lap) => sum + (lap.duration ?? 0), 0);
-    const hrWeighted = withHr.reduce((sum, lap) => sum + lap.averageHR * (lap.duration ?? 0), 0);
-    const maxHr = Math.max(0, ...group.laps.map((lap) => lap.maxHR ?? 0));
-    return {
-      step: index + 1,
-      type: group.type || undefined,
-      meters,
-      seconds,
-      km: km(meters),
-      time: clock(seconds),
-      pacePerKm: seconds > 0 ? pacePerKm(meters / seconds) : undefined,
-      avgHr: hrSeconds > 0 ? round(hrWeighted / hrSeconds) : undefined,
-      maxHr: maxHr > 0 ? round(maxHr) : undefined,
-    };
-  });
-  const rollup = (type: string) => {
-    const matching = steps.filter((step) => step.type === type);
-    if (!matching.length) return undefined;
-    const meters = matching.reduce((sum, step) => sum + step.meters, 0);
-    const seconds = matching.reduce((sum, step) => sum + step.seconds, 0);
-    const withHr = matching.filter((step) => step.avgHr != null);
-    const hrSeconds = withHr.reduce((sum, step) => sum + step.seconds, 0);
-    return {
-      count: matching.length,
-      pacePerKm: seconds > 0 ? pacePerKm(meters / seconds) : undefined,
-      avgHr: hrSeconds > 0 ? round(withHr.reduce((sum, step) => sum + step.avgHr! * step.seconds, 0) / hrSeconds) : undefined,
-    };
-  };
-  return compact({
-    work: rollup('interval'),
-    recovery: rollup('recovery'),
-    steps: steps.map(({ meters, seconds, ...step }) => step),
-  });
-}
-
-export function summarizeTrainingStatus(raw: Raw | null | undefined) {
-  if (!raw) return null;
-  const status = Object.values<Raw>(raw.mostRecentTrainingStatus?.latestTrainingStatusData ?? {})[0];
-  const balance = Object.values<Raw>(raw.mostRecentTrainingLoadBalance?.metricsTrainingLoadBalanceDTOMap ?? {})[0];
-  const load = status?.acuteTrainingLoadDTO;
-  return compact({
-    status: label(status?.trainingStatusFeedbackPhrase),
-    since: status?.sinceDate,
-    vo2Max: raw.mostRecentVO2Max?.generic?.vo2MaxPreciseValue,
-    load: load && {
-      acute: load.dailyTrainingLoadAcute,
-      chronic: load.dailyTrainingLoadChronic,
-      ratio: round(load.dailyAcuteChronicWorkloadRatio, 2),
-      ratioStatus: label(load.acwrStatus),
-      optimalChronicRange: [round(load.minTrainingLoadChronic), round(load.maxTrainingLoadChronic)],
-    },
-    loadBalance: balance && {
-      feedback: label(balance.trainingBalanceFeedbackPhrase),
-      aerobicLow: { value: round(balance.monthlyLoadAerobicLow), target: [balance.monthlyLoadAerobicLowTargetMin, balance.monthlyLoadAerobicLowTargetMax] },
-      aerobicHigh: { value: round(balance.monthlyLoadAerobicHigh), target: [balance.monthlyLoadAerobicHighTargetMin, balance.monthlyLoadAerobicHighTargetMax] },
-      anaerobic: { value: round(balance.monthlyLoadAnaerobic), target: [balance.monthlyLoadAnaerobicTargetMin, balance.monthlyLoadAnaerobicTargetMax] },
-    },
-  });
-}
-
-export function summarizeCoachTask(task: Raw) {
-  const workout = task.taskWorkout ?? {};
-  return compact({
-    date: task.calendarDate,
-    workout: workout.restDay ? 'Rest' : workout.workoutName,
-    steps: workout.workoutDescription,
-    distanceKm: km(workout.estimatedDistanceInMeters, 1),
-    duration: hoursMinutes(workout.estimatedDurationInSecs),
-    purpose: workout.trainingEffectLabel === 'INVALID' ? undefined : label(workout.trainingEffectLabel),
-    key: task.keyWorkout || undefined,
-    status: label(workout.adaptiveCoachingWorkoutStatus),
-    note: label(workout.workoutPhrase),
   });
 }

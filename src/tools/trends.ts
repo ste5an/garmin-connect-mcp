@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { type DateRange, rangeFields, resolveRange } from './dates';
-import { defineTool, mapConcurrent } from './define';
+import { defineTool } from './define';
 import { compact, kgFromGrams, round, stats } from './format';
-import { latestReadiness, summarizeHrv, summarizeSleep } from './summaries';
+import { summarizeDay, summarizeSleep } from './summaries';
 import type { GarminClient } from '../garmin/client';
 
 type Raw = Record<string, any>;
@@ -17,17 +17,18 @@ const METRICS = [
   'resting_hr',
   'stress',
   'body_battery',
-  'readiness',
   'spo2',
   'respiration',
-  'vo2max',
   'weight',
   'intensity_minutes',
 ] as const;
 
 type Metric = (typeof METRICS)[number];
 
-const RESTING_HR_CONCURRENCY = 4;
+async function dailyRows(client: GarminClient, range: DateRange): Promise<Raw[]> {
+  const summaries = (await client.getDailySummaries(range.from, range.to)) as Raw;
+  return (summaries?.data ?? []).map((entry: Raw) => summarizeDay(entry)).filter((day: Raw | null) => day !== null);
+}
 
 const loaders: Record<Metric, (client: GarminClient, range: DateRange) => Promise<Series>> = {
   steps: async (client, range) => ({
@@ -40,39 +41,33 @@ const loaders: Record<Metric, (client: GarminClient, range: DateRange) => Promis
   }),
   sleep_score: async (client, range) => ({
     unit: 'score',
-    rows: (await client.getSleepDataRange(range.from, range.to)).map(({ date, data }) => ({
-      date,
-      value: summarizeSleep(data as Raw)?.score,
+    rows: (await client.getSleepSummaries(range.from, range.to)).map((night) => ({
+      date: (night as Raw).calendarDate,
+      value: summarizeSleep(night as Raw)?.score,
     })),
   }),
   sleep_hours: async (client, range) => ({
     unit: 'hours',
-    rows: (await client.getSleepDataRange(range.from, range.to)).map(({ date, data }) => ({
-      date,
-      value: round((summarizeSleep(data as Raw)?.minutes?.total ?? NaN) / 60, 2),
+    rows: (await client.getSleepSummaries(range.from, range.to)).map((night) => ({
+      date: (night as Raw).calendarDate,
+      value: round((summarizeSleep(night as Raw)?.minutes?.total ?? NaN) / 60, 2),
     })),
   }),
   hrv: async (client, range) => ({
     unit: 'ms (overnight average)',
-    rows: (await client.getHRVRange(range.from, range.to)).map(({ date, data }) => {
-      const summary = summarizeHrv(data as Raw);
-      return { date, value: summary?.lastNight, status: summary?.status };
-    }),
+    rows: (((await client.getHrvSummaries(range.from, range.to)) as Raw)?.hrvSummaries ?? []).map((night: Raw) => ({
+      date: night.calendarDate,
+      value: night.lastNightAvg,
+      status: night.status?.toLowerCase(),
+    })),
   }),
   resting_hr: async (client, range) => ({
     unit: 'bpm',
-    rows: await mapConcurrent(range.dates, RESTING_HR_CONCURRENCY, async (date) => {
-      const raw = (await client.getRestingHeartRate(date).catch(() => null)) as Raw | null;
-      return { date, value: raw?.allMetrics?.metricsMap?.WELLNESS_RESTING_HEART_RATE?.[0]?.value as number | undefined };
-    }),
+    rows: (await dailyRows(client, range)).map((day) => ({ date: day.date, value: day.heartRate?.resting })),
   }),
   stress: async (client, range) => ({
     unit: 'average stress (0-100)',
-    rows: (await client.getStressRange(range.from, range.to)).map(({ date, data }) => ({
-      date,
-      value: (data as Raw | null)?.avgStressLevel,
-      max: (data as Raw | null)?.maxStressLevel,
-    })),
+    rows: (await dailyRows(client, range)).map((day) => ({ date: day.date, value: day.stress?.avg, max: day.stress?.max })),
   }),
   body_battery: async (client, range) => ({
     unit: 'points charged',
@@ -82,50 +77,28 @@ const loaders: Record<Metric, (client: GarminClient, range: DateRange) => Promis
       drained: day.drained,
     })),
   }),
-  readiness: async (client, range) => ({
-    unit: 'score',
-    rows: (await client.getTrainingReadinessRange(range.from, range.to)).map(({ date, data }) => {
-      const entry = latestReadiness(data);
-      return { date, value: entry?.score, level: entry?.level?.toLowerCase() };
-    }),
-  }),
   spo2: async (client, range) => ({
     unit: '%',
-    rows: (await client.getSpO2Range(range.from, range.to)).map(({ date, data }) => ({
-      date,
-      value: (data as Raw | null)?.averageSpO2,
-      lowest: (data as Raw | null)?.lowestSpO2,
-    })),
+    rows: (await dailyRows(client, range)).map((day) => ({ date: day.date, value: day.spo2?.avg, lowest: day.spo2?.lowest })),
   }),
   respiration: async (client, range) => ({
     unit: 'breaths/min',
-    rows: (await client.getRespirationRange(range.from, range.to)).map(({ date, data }) => ({
-      date,
-      value: (data as Raw | null)?.avgWakingRespirationValue,
-      sleep: (data as Raw | null)?.avgSleepRespirationValue,
-    })),
-  }),
-  vo2max: async (client, range) => ({
-    unit: 'ml/kg/min',
-    rows: (await client.getVO2MaxRange(range.from, range.to)).map(({ date, data }) => ({
-      date,
-      value: (data as Raw[] | null)?.[0]?.generic?.vo2MaxPreciseValue,
-    })),
+    rows: (await dailyRows(client, range)).map((day) => ({ date: day.date, value: day.respiration?.avg })),
   }),
   weight: async (client, range) => ({
     unit: 'kg',
-    rows: (((await client.getWeighIns(range.from, range.to)) as Raw)?.dailyWeightSummaries ?? []).map((day: Raw) => ({
+    rows: (((await client.getWeightMeasurements(range.from, range.to)) as Raw)?.dailyWeightSummaries ?? []).map((day: Raw) => ({
       date: day.summaryDate,
       value: kgFromGrams(day.latestWeight?.weight),
       bodyFatPercent: round(day.latestWeight?.bodyFat, 1),
     })),
   }),
   intensity_minutes: async (client, range) => ({
-    unit: 'minutes per week (vigorous counts double)',
-    rows: ((await client.getWeeklyIntensityMinutes(range.from, range.to)) as Raw[]).map((week) => ({
-      date: week.calendarDate,
-      value: week.moderateValue + 2 * week.vigorousValue,
-      goal: week.weeklyGoal,
+    unit: 'minutes per day (vigorous counts double)',
+    rows: (await dailyRows(client, range)).map((day) => ({
+      date: day.date,
+      value: (day.intensityMinutes?.moderate ?? 0) + 2 * (day.intensityMinutes?.vigorous ?? 0),
+      goal: day.intensityMinutes?.goal,
     })),
   }),
 };
@@ -135,7 +108,7 @@ export const trends = defineTool({
   title: 'Metric trends',
   description:
     'Daily series for one metric over a period, with min/max/average/latest: steps, sleep score, sleep hours, HRV, resting HR, stress, ' +
-    'Body Battery, readiness, SpO2, respiration, VO2 max, weight or weekly intensity minutes. Defaults to the last 14 days.',
+    'Body Battery, SpO2, respiration, weight or intensity minutes. Defaults to the last 14 days.',
   input: {
     metric: z.enum(METRICS).describe('Which metric to chart.'),
     ...rangeFields,
