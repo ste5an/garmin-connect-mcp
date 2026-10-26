@@ -4,7 +4,7 @@ Ask your AI assistant about your Garmin data in plain language: sleep, recovery,
 
 > "How did I sleep and should I go easy today?" · "Compare my last three long runs." · "Is my resting heart rate trending up?"
 
-Eleven task-level tools on top of Garmin's official Personal API, plus an optional email login for your Garmin Coach plan. Responses are trimmed to what matters (a night of sleep is about 500 characters, not 245,000), so answers are fast and cheap. Everything is read-only.
+Twelve task-level tools on top of Garmin's official Personal API, plus an optional email login for your Garmin Coach plan. Responses are trimmed to what matters (a night of sleep is about 500 characters, not 245,000), so answers are fast and cheap. Everything is read-only.
 
 ## Quick start
 
@@ -45,27 +45,28 @@ Use the JSON form for Claude Desktop (`claude_desktop_config.json`) and Cursor (
 
 Set `GARMIN_PERSONAL_API_KEY_FILE` to read the key from another path.
 
-### Optional: Garmin Coach plan
+### Optional: email login for Coach plan, readiness and training status
 
-The Personal API does not include training plans, so `coach_plan` uses Garmin's unofficial endpoints instead. To enable it:
+The Personal API does not include training plans, training readiness, training status, VO2 max, race predictions or endurance and hill scores, so those tools use Garmin's unofficial endpoints instead. To enable them:
 
 ```bash
 npx @ste5an/garmin-connect-mcp login
 ```
 
-Enter your Garmin email and password (and the verification code if you use MFA). Tokens are saved in `~/.garmin-mcp/`; the password is never stored. Without this login everything else works and `coach_plan` explains how to set it up. Use `login` rather than putting `GARMIN_PASSWORD` in a client config file, where it would sit in plain text. This part can break without notice because it is not an official API.
+Enter your Garmin email and password (and the verification code if you use MFA). Tokens are saved in `~/.garmin-mcp/`; the password is never stored. Without this login everything else works, and the tools that need it explain how to set it up. Use `login` rather than putting `GARMIN_PASSWORD` in a client config file, where it would sit in plain text. This part can break without notice because it is not an official API.
 
 ## Tools
 
 | Tool | Answers |
 |---|---|
-| `daily_briefing` | A day in one call: steps, calories, heart rate, stress, Body Battery, hydration, sleep, HRV, workouts done and the coach workouts planned (with the optional login). Start here. |
+| `daily_briefing` | A day in one call: steps, calories, heart rate, stress, Body Battery, hydration, sleep, HRV, workouts done, and with the optional login training readiness, training status and the coach workouts planned. Start here. |
 | `sleep` | Score, stages with ratings, bedtime, SpO2, respiration, sleep need. One night or a range with averages. |
-| `recovery` | HRV status against the balanced range, resting HR, Body Battery, stress, sleep score. A day or a trend. |
+| `recovery` | HRV status against the balanced range, resting HR, Body Battery, stress, sleep score, and training readiness with the optional login. A day or a trend. |
 | `activities` | Recent or date-ranged workouts with distance, duration, pace, average and max heart rate, time in each heart-rate zone, cadence, power, elevation, calories, training effect and load. Filter by type. |
 | `activity` | One workout in depth: moving time, pace, heart rate, cadence, stride length, ground contact time, vertical oscillation, elevation, training effect, the structured workout it followed, per-km splits and detected intervals. |
+| `training` | Training status, acute/chronic load and balance, VO2 max, race time predictions, endurance and hill scores, lactate threshold. Needs the optional email login. |
 | `coach_plan` | Upcoming Garmin Coach workouts with their interval structure. Needs the optional email login. |
-| `trends` | Daily series with min/max/average for steps, sleep, HRV, resting HR, stress, Body Battery, SpO2, respiration, weight, intensity minutes. |
+| `trends` | Daily series with min/max/average for steps, sleep, HRV, resting HR, stress, Body Battery, SpO2, respiration, weight, intensity minutes, and with the optional login readiness and VO2 max. |
 | `weekly_summary` | Per-week run kilometres, longest run and its share of the week, strength sessions, total time, load and week-over-week change. |
 | `body` | Weigh-ins and body composition. |
 | `profile` | Units, time zone, heart-rate zones, max/resting/threshold heart rate, fitness age. |
@@ -75,13 +76,13 @@ Dates accept `YYYY-MM-DD`, `today` and `yesterday`. Ranges take `days`, or `from
 
 Garmin's lap and workout-step data is not in the Personal API, so `activity` rebuilds splits and intervals from the per-second pace and heart-rate stream (an undocumented `details` endpoint). Per-km splits are exact. Intervals are detected from pace changes: warm-up, work reps, recoveries and cool-down, each with distance, time, pace and heart rate. Boundaries can be off by several seconds, and steady runs report no intervals. If Garmin removes that endpoint, these two sections disappear and everything else keeps working.
 
-The Personal API does not offer official lap data, weather, training readiness, training status, VO2 max, race predictions, saved workouts, gear, devices, goals, personal records, blood pressure or any write access, so those are not available.
+The Personal API does not offer official lap data, weather, saved workouts, gear, devices, goals, personal records, blood pressure or any write access, so those are not available.
 
 ## Troubleshooting
 
 - **"No Garmin Personal API key found"**: run `setup`, or create the key file by hand.
 - **"Garmin rejected the request"**: for Personal API data, the key expired (30 days to 1 year, your choice) or was deleted: create a new one and run `setup`. For the Coach plan, run `login` again.
-- **"Garmin Coach needs the optional email login"**: run `login` in a terminal. The MCP server cannot prompt for a password or MFA code itself.
+- **"Garmin Coach needs the optional email login"** (also shown for `training`, readiness and VO2 max): run `login` in a terminal. The MCP server cannot prompt for a password or MFA code itself.
 - **404 for a metric**: your device or account has no data for it. Other tools keep working.
 - **429**: Garmin is rate limiting. Wait a minute.
 - Access tokens last 24 hours and have no refresh token; the server fetches a new one automatically.
@@ -105,4 +106,4 @@ Source layout: `src/garmin/` (key-to-token authentication, API client), `src/too
 
 MIT. Authentication and endpoints follow Garmin's [Personal API reference client](https://github.com/garmin/connect-personal-api-python). The optional email login follows the flow used by [python-garminconnect](https://github.com/cyberjunky/python-garminconnect) and [garth](https://github.com/matin/garth). The project started from [Nicolasvegam/garmin-connect-mcp](https://github.com/Nicolasvegam/garmin-connect-mcp) (MIT) and was rewritten around task-level tools.
 
-Not affiliated with Garmin. The Coach plan uses unofficial endpoints that can change without notice.
+Not affiliated with Garmin. The optional login features use unofficial endpoints that can change without notice.

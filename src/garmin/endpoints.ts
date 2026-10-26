@@ -34,3 +34,12 @@ export const ACTIVITY_DETAILS_MAX_CHART_SIZE = 2000;
 
 export const TRAINING_PLANS_LIST_ENDPOINT = '/trainingplan-service/trainingplan/plans';
 export const ADAPTIVE_TRAINING_PLAN_ENDPOINT = '/trainingplan-service/trainingplan/fbt-adaptive';
+
+export const TRAINING_READINESS_ENDPOINT = '/metrics-service/metrics/trainingreadiness';
+export const TRAINING_STATUS_ENDPOINT = '/metrics-service/metrics/trainingstatus/aggregated';
+export const VO2_MAX_ENDPOINT = '/metrics-service/metrics/maxmet/daily';
+export const ENDURANCE_SCORE_ENDPOINT = '/metrics-service/metrics/endurancescore';
+export const HILL_SCORE_ENDPOINT = '/metrics-service/metrics/hillscore';
+export const RACE_PREDICTIONS_ENDPOINT = '/metrics-service/metrics/racepredictions';
+export const LACTATE_THRESHOLD_ENDPOINT = '/biometric-service/biometric/latestLactateThreshold';
+export const CYCLING_FTP_ENDPOINT = '/biometric-service/biometric/latestFunctionalThresholdPower/CYCLING';
