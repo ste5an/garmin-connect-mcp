@@ -2,6 +2,7 @@ import { activities, activity } from './activities';
 import { body } from './body';
 import { dailyBriefing } from './briefing';
 import type { ToolDefinition } from './define';
+import { coachPlan } from './plan';
 import { profile } from './profile';
 import { garminApi } from './raw';
 import { recovery } from './recovery';
@@ -15,6 +16,7 @@ export const tools: ToolDefinition<any>[] = [
   recovery,
   activities,
   activity,
+  coachPlan,
   trends,
   weeklySummary,
   body,

@@ -31,3 +31,6 @@ export const MENSTRUAL_DAY_VIEW_ENDPOINT = '/periodichealth-service/menstrualcyc
 
 export const DEFAULT_ACTIVITIES_LIMIT = 20;
 export const ACTIVITY_DETAILS_MAX_CHART_SIZE = 2000;
+
+export const TRAINING_PLANS_LIST_ENDPOINT = '/trainingplan-service/trainingplan/plans';
+export const ADAPTIVE_TRAINING_PLAN_ENDPOINT = '/trainingplan-service/trainingplan/fbt-adaptive';

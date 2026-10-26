@@ -1,6 +1,8 @@
 import { GarminAuth, type QueryParams } from './auth';
+import { LegacyAuth } from './legacy-auth';
 import {
   ACTIVITIES_SEARCH_ENDPOINT,
+  ADAPTIVE_TRAINING_PLAN_ENDPOINT,
   ACTIVITY_DETAILS_MAX_CHART_SIZE,
   ACTIVITY_ENDPOINT,
   BODY_BATTERY_ENDPOINT,
@@ -20,6 +22,7 @@ import {
   MENSTRUAL_DAY_VIEW_ENDPOINT,
   MENSTRUAL_SUMMARY_ENDPOINT,
   SPO2_ENDPOINT,
+  TRAINING_PLANS_LIST_ENDPOINT,
   USER_SETTINGS_ENDPOINT,
   WEIGHT_GOALS_ENDPOINT,
   WEIGHT_RANGE_ENDPOINT,
@@ -51,6 +54,19 @@ export type ActivityQuery = {
 
 export class GarminClient {
   private auth = new GarminAuth();
+  private legacy: LegacyAuth;
+
+  constructor(legacy = new LegacyAuth()) {
+    this.legacy = legacy;
+  }
+
+  get hasLegacyLogin(): boolean {
+    return this.legacy.isLoggedIn;
+  }
+
+  legacyLogin(): Promise<void> {
+    return this.legacy.login();
+  }
 
   connect(): Promise<void> {
     return this.auth.connect();
@@ -193,6 +209,14 @@ export class GarminClient {
 
   getFoodLogs(date = todayString()): Promise<unknown> {
     return this.get(`${FOOD_LOGS_ENDPOINT}/${date}`);
+  }
+
+  getTrainingPlans(): Promise<unknown> {
+    return this.legacy.request(TRAINING_PLANS_LIST_ENDPOINT);
+  }
+
+  getAdaptiveTrainingPlan(planId: string): Promise<unknown> {
+    return this.legacy.request(`${ADAPTIVE_TRAINING_PLAN_ENDPOINT}/${planId}`);
   }
 
   getUserSettings(): Promise<unknown> {

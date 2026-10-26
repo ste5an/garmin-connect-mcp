@@ -1,5 +1,5 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { fail, logout, printConfig, printHelp, setup, status } from './cli/commands';
+import { fail, login, logout, printConfig, printHelp, setup, status } from './cli/commands';
 import { GarminClient } from './garmin/client';
 import { createServer } from './server';
 import { VERSION } from './version';
@@ -18,8 +18,9 @@ async function main(): Promise<void> {
     case 'serve':
       return serve();
     case 'setup':
-    case 'login':
       return setup();
+    case 'login':
+      return login();
     case 'status':
       return status();
     case 'logout':
