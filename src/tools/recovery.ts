@@ -2,13 +2,15 @@ import { z } from 'zod';
 import { rangeFields, resolveDate, resolveRange } from './dates';
 import { defineTool, gather } from './define';
 import { compact } from './format';
-import { latestReadiness, summarizeDay, summarizeHrv, summarizeReadiness, summarizeSleep } from './summaries';
+import { summarizeDay, summarizeHrv, summarizeSleep } from './summaries';
+
+type Raw = Record<string, any>;
 
 export const recovery = defineTool({
   name: 'recovery',
-  title: 'Recovery and readiness',
+  title: 'Recovery',
   description:
-    'Training readiness (score, level, contributing factors, recovery hours), HRV status, resting HR, Body Battery and stress. ' +
+    'Recovery signals: HRV status against the balanced range, resting HR, Body Battery, stress and sleep score. ' +
     'Use it to decide whether to train hard, go easy or rest. Pass `days`/`from`/`to` for a trend.',
   input: {
     date: z.string().optional().describe('Single day: YYYY-MM-DD, "today" or "yesterday". Ignored when a range is given.'),
@@ -18,39 +20,37 @@ export const recovery = defineTool({
     const isRange = from !== undefined || (days !== undefined && days > 1);
     if (isRange) {
       const range = resolveRange({ from, to, days }, 7);
-      const [readiness, hrv] = await Promise.all([
-        client.getTrainingReadinessRange(range.from, range.to),
-        client.getHRVRange(range.from, range.to),
+      const [summaries, hrv] = await Promise.all([
+        client.getDailySummaries(range.from, range.to) as Promise<Raw>,
+        client.getHrvSummaries(range.from, range.to) as Promise<Raw>,
       ]);
+      const hrvByDate = new Map<string, Raw>((hrv.hrvSummaries ?? []).map((entry: Raw) => [entry.calendarDate, entry]));
       return {
         from: range.from,
         to: range.to,
-        days: range.dates.map((day, index) => {
-          const entry = latestReadiness(readiness[index]?.data);
-          const summary = summarizeHrv(hrv[index]?.data as any);
+        days: ((summaries.data ?? []) as Raw[]).map((entry) => {
+          const day = summarizeDay(entry);
+          const night = hrvByDate.get(entry.calendarDate);
           return compact({
-            date: day,
-            readiness: entry?.score,
-            level: entry?.level?.toLowerCase(),
-            sleepScore: entry?.sleepScore,
-            hrvLastNight: summary?.lastNight,
-            hrvStatus: summary?.status,
-            recoveryHours: entry ? Math.round((entry.recoveryTime / 60) * 10) / 10 : undefined,
+            date: entry.calendarDate,
+            restingHr: day?.heartRate?.resting,
+            avgStress: day?.stress?.avg,
+            bodyBatteryHigh: day?.bodyBattery?.high,
+            hrvLastNight: night?.lastNightAvg,
+            hrvStatus: summarizeHrv({ hrvSummary: night })?.status,
           });
         }),
       };
     }
     const day = resolveDate(date);
     const { data, unavailable } = await gather({
-      readiness: () => client.getTrainingReadiness(day),
-      hrv: () => client.getHRV(day),
-      day: () => client.getDailySummary(day),
-      sleep: () => client.getSleepData(day),
+      hrv: () => client.getHrv(day),
+      day: () => client.getDailySummaries(day, day),
+      sleep: () => client.getSleep(day),
     });
-    const summary = summarizeDay(data.day as any);
+    const summary = summarizeDay(((data.day as Raw | undefined)?.data ?? [])[0]);
     return compact({
       date: day,
-      readiness: summarizeReadiness(data.readiness),
       hrv: summarizeHrv(data.hrv as any),
       restingHr: summary?.heartRate?.resting,
       stress: summary?.stress,

@@ -1,15 +1,15 @@
 # Garmin Connect MCP
 
-MCP server for Garmin Connect in TypeScript. 20 task-level tools that return trimmed, human-readable data.
+MCP server for the Garmin Connect Personal API in TypeScript. Ten read-only, task-level tools that return trimmed, human-readable data.
 
 ## Layout
 
 ```
 src/
-  cli.ts            Entry point: serve | login | status | logout | config
-  cli/              login prompts and setup commands
+  cli.ts            Entry point: serve | setup | status | logout | config
+  cli/              hidden key prompt and setup commands
   server.ts         MCP wiring: registers every tool, formats results and errors
-  garmin/           auth.ts (SSO + OAuth1/2), client.ts (endpoint methods), endpoints.ts
+  garmin/           auth.ts (API key to bearer token), client.ts (endpoint methods), endpoints.ts
   tools/            one file per tool, plus define.ts, dates.ts, format.ts, summaries.ts
 ```
 
@@ -19,7 +19,7 @@ src/
 - Never return raw Garmin payloads from a tool. Put the mapping in `summaries.ts` or the tool file and drop nulls with `compact`. The `garmin_api` tool is the only raw escape hatch.
 - A section that fails must not fail the whole tool: use `gather` and report it in `unavailable`.
 - Dates: accept `YYYY-MM-DD`, `today`, `yesterday` through `resolveDate`/`resolveRange`. All date math is local-calendar or UTC-string based, never `toISOString()` on a local time.
-- Write tools use `mode: 'write'`; destructive ones use `mode: 'destructive'` and require a `confirm: true` input.
+- The Personal API is read-only. Do not add write tools. Range endpoints cap at 28 days (steps, stress, sleep, Body Battery); go through `chunked` in the client.
 - Errors shown to the user come from `describeError` and must say what to do next.
 - Never log to stdout (it is the MCP transport). Use `console.error`.
 
@@ -33,7 +33,7 @@ src/
 
 ## Auth
 
-Tokens live in `~/.garmin-mcp/` (owner-only). `login` obtains them with email, password and optional MFA code. The server never prompts; without tokens every tool returns the `AuthRequiredError` message. OAuth2 is refreshed from OAuth1 on 401.
+The key lives in `~/.config/garmin/connect-personal-api-key` (override with `GARMIN_PERSONAL_API_KEY_FILE`). `auth.ts` POSTs it to `/personalapitoken-service/personal-api/personal-api-key/token` for a 24-hour JWT, cached in `~/.garmin-mcp/personal-api-token.json`, and retries once with a fresh token on 401. There is no refresh token. The server never prompts; without a key every tool returns the `AuthRequiredError` message. Never print or log the key or token.
 
 ## Commands
 

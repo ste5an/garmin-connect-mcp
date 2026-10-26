@@ -8,7 +8,6 @@ export type ToolDefinition<Shape extends ZodRawShape = ZodRawShape> = {
   title: string;
   description: string;
   input: Shape;
-  mode?: 'read' | 'write' | 'destructive';
   run: (args: z.objectOutputType<Shape, z.ZodTypeAny>, context: ToolContext) => Promise<unknown>;
 };
 
@@ -32,17 +31,4 @@ export async function gather<T extends Record<string, () => Promise<unknown>>>(
     else unavailable.push(keys[index]!);
   });
   return { data: data as Settled<T>, unavailable };
-}
-
-export async function mapConcurrent<T, R>(items: T[], limit: number, mapper: (item: T) => Promise<R>): Promise<R[]> {
-  const results = new Array<R>(items.length);
-  let next = 0;
-  const worker = async (): Promise<void> => {
-    while (next < items.length) {
-      const index = next++;
-      results[index] = await mapper(items[index]!);
-    }
-  };
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
-  return results;
 }
