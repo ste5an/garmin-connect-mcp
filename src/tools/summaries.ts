@@ -154,3 +154,18 @@ export function summarizeActivityDetail(raw: Raw) {
     workoutRpe: summary.directWorkoutRpe,
   });
 }
+
+export function summarizeCoachTask(task: Raw) {
+  const workout = task.taskWorkout ?? {};
+  return compact({
+    date: task.calendarDate,
+    workout: workout.restDay ? 'Rest' : workout.workoutName,
+    steps: workout.workoutDescription,
+    distanceKm: km(workout.estimatedDistanceInMeters, 1),
+    duration: hoursMinutes(workout.estimatedDurationInSecs),
+    purpose: workout.trainingEffectLabel === 'INVALID' ? undefined : label(workout.trainingEffectLabel),
+    key: task.keyWorkout || undefined,
+    status: label(workout.adaptiveCoachingWorkoutStatus),
+    note: label(workout.workoutPhrase),
+  });
+}

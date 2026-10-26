@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AuthRequiredError } from './garmin/auth';
+import { LegacyLoginRequiredError } from './garmin/legacy-auth';
 import { describeError } from './server';
 import { tools } from './tools';
 
@@ -20,6 +21,10 @@ describe('describeError', () => {
     const message = describeError(new AuthRequiredError('No Garmin Personal API key found.'));
     expect(message).toContain('No Garmin Personal API key found.');
     expect(message).toContain('garmin-connect-mcp setup');
+  });
+
+  it('tells the user how to unlock the Coach plan', () => {
+    expect(describeError(new LegacyLoginRequiredError())).toContain('garmin-connect-mcp login');
   });
 
   it('falls back to the error message', () => {

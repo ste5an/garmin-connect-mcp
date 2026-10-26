@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { summarizeActivity, summarizeDay, summarizeHrv, summarizeSleep } from './summaries';
+import { summarizeActivity, summarizeCoachTask, summarizeDay, summarizeHrv, summarizeSleep } from './summaries';
 
 describe('summarizeSleep', () => {
   const raw = {
@@ -134,5 +134,28 @@ describe('summarizeActivity', () => {
     expect(ride).toMatchObject({ speedKmh: 28.8 });
     expect(ride).not.toHaveProperty('pacePerKm');
     expect(ride).not.toHaveProperty('hrZones');
+  });
+});
+
+describe('summarizeCoachTask', () => {
+  it('shows the interval structure and hides placeholder labels on rest days', () => {
+    const tempo = summarizeCoachTask({
+      calendarDate: '2026-10-22',
+      keyWorkout: true,
+      taskWorkout: {
+        workoutName: 'Tempo',
+        workoutDescription: '4x8:00@5:05/km',
+        estimatedDistanceInMeters: 10957,
+        estimatedDurationInSecs: 3660,
+        trainingEffectLabel: 'TEMPO',
+      },
+    });
+    expect(tempo).toMatchObject({ workout: 'Tempo', steps: '4x8:00@5:05/km', distanceKm: 11, duration: '1h01m', key: true });
+
+    const rest = summarizeCoachTask({
+      calendarDate: '2026-10-24',
+      taskWorkout: { restDay: true, trainingEffectLabel: 'INVALID' },
+    });
+    expect(rest).toEqual({ date: '2026-10-24', workout: 'Rest' });
   });
 });
