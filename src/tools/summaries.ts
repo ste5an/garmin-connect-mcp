@@ -49,6 +49,33 @@ export function summarizeHrv(raw: Raw | null | undefined) {
   });
 }
 
+export function latestReadiness(raw: unknown): Raw | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  return [...raw].sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)))[0];
+}
+
+export function summarizeReadiness(raw: unknown) {
+  const entry = latestReadiness(raw);
+  if (!entry) return null;
+  return compact({
+    date: entry.calendarDate,
+    score: entry.score,
+    level: label(entry.level),
+    headline: label(entry.feedbackShort),
+    recoveryHours: round(entry.recoveryTime / 60, 1),
+    acuteLoad: entry.acuteLoad,
+    hrvWeeklyAvg: entry.hrvWeeklyAverage,
+    factors: {
+      sleep: label(entry.sleepScoreFactorFeedback),
+      sleepHistory: label(entry.sleepHistoryFactorFeedback),
+      recovery: label(entry.recoveryTimeFactorFeedback),
+      load: label(entry.acwrFactorFeedback),
+      stress: label(entry.stressHistoryFactorFeedback),
+      hrv: label(entry.hrvFactorFeedback),
+    },
+  });
+}
+
 export function summarizeDay(raw: Raw | null | undefined) {
   if (!raw?.calendarDate) return null;
   const { movement, calories, heartRate, stress, bodyBattery, intensityMinutes, pulseOx, respiration, hydration } = raw;
@@ -167,5 +194,30 @@ export function summarizeCoachTask(task: Raw) {
     key: task.keyWorkout || undefined,
     status: label(workout.adaptiveCoachingWorkoutStatus),
     note: label(workout.workoutPhrase),
+  });
+}
+
+export function summarizeTrainingStatus(raw: Raw | null | undefined) {
+  if (!raw) return null;
+  const status = Object.values<Raw>(raw.mostRecentTrainingStatus?.latestTrainingStatusData ?? {})[0];
+  const balance = Object.values<Raw>(raw.mostRecentTrainingLoadBalance?.metricsTrainingLoadBalanceDTOMap ?? {})[0];
+  const load = status?.acuteTrainingLoadDTO;
+  return compact({
+    status: label(status?.trainingStatusFeedbackPhrase),
+    since: status?.sinceDate,
+    vo2Max: raw.mostRecentVO2Max?.generic?.vo2MaxPreciseValue,
+    load: load && {
+      acute: load.dailyTrainingLoadAcute,
+      chronic: load.dailyTrainingLoadChronic,
+      ratio: round(load.dailyAcuteChronicWorkloadRatio, 2),
+      ratioStatus: label(load.acwrStatus),
+      optimalChronicRange: [round(load.minTrainingLoadChronic), round(load.maxTrainingLoadChronic)],
+    },
+    loadBalance: balance && {
+      feedback: label(balance.trainingBalanceFeedbackPhrase),
+      aerobicLow: { value: round(balance.monthlyLoadAerobicLow), target: [balance.monthlyLoadAerobicLowTargetMin, balance.monthlyLoadAerobicLowTargetMax] },
+      aerobicHigh: { value: round(balance.monthlyLoadAerobicHigh), target: [balance.monthlyLoadAerobicHighTargetMin, balance.monthlyLoadAerobicHighTargetMax] },
+      anaerobic: { value: round(balance.monthlyLoadAnaerobic), target: [balance.monthlyLoadAnaerobicTargetMin, balance.monthlyLoadAnaerobicTargetMax] },
+    },
   });
 }

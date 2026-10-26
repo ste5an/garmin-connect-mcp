@@ -1,6 +1,6 @@
 # Garmin Connect MCP
 
-MCP server for the Garmin Connect Personal API in TypeScript. Eleven read-only, task-level tools that return trimmed, human-readable data.
+MCP server for the Garmin Connect Personal API in TypeScript. Twelve read-only, task-level tools that return trimmed, human-readable data.
 
 ## Layout
 
@@ -35,7 +35,7 @@ src/
 
 The key lives in `~/.config/garmin/connect-personal-api-key` (override with `GARMIN_PERSONAL_API_KEY_FILE`). `auth.ts` POSTs it to `/personalapitoken-service/personal-api/personal-api-key/token` for a 24-hour JWT, cached in `~/.garmin-mcp/personal-api-token.json`, and retries once with a fresh token on 401. There is no refresh token. The server never prompts; without a key every tool returns the `AuthRequiredError` message. Never print or log the key or token.
 
-Optional: `login` runs the old SSO + OAuth flow in `legacy-auth.ts` (email, password, MFA) and saves OAuth tokens in `~/.garmin-mcp/`. Only `coach_plan` and the coach section of `daily_briefing` use it, through `getTrainingPlans` and `getAdaptiveTrainingPlan`; nothing else may depend on it. The server never prompts for it; without tokens `coach_plan` returns the `LegacyLoginRequiredError` message.
+Optional: `login` runs the old SSO + OAuth flow in `legacy-auth.ts` (email, password, MFA) and saves OAuth tokens in `~/.garmin-mcp/`. Only the Coach plan, training readiness, training status, VO2 max, race prediction, endurance/hill score and threshold client methods use it (`coach_plan`, `training`, readiness in `recovery`, `daily_briefing` and `trends`); nothing else may depend on it. Gate every use on `client.hasLegacyLogin` or throw `LegacyLoginRequiredError`, so a missing login never fails a tool that works without it. The server never prompts for it.
 
 ## Commands
 

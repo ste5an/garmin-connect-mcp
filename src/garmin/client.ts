@@ -6,6 +6,7 @@ import {
   ACTIVITY_DETAILS_MAX_CHART_SIZE,
   ACTIVITY_ENDPOINT,
   BODY_BATTERY_ENDPOINT,
+  CYCLING_FTP_ENDPOINT,
   DAILY_HRV_ENDPOINT,
   DAILY_HYDRATION_ENDPOINT,
   DAILY_SLEEP_ENDPOINT,
@@ -14,16 +15,23 @@ import {
   DAILY_STRESS_ENDPOINT,
   DAILY_SUMMARIES_ENDPOINT,
   DEFAULT_ACTIVITIES_LIMIT,
+  ENDURANCE_SCORE_ENDPOINT,
   FITNESS_AGE_ENDPOINT,
   FOOD_LOGS_ENDPOINT,
   HEART_RATE_ENDPOINT,
   HEART_RATE_ZONES_ENDPOINT,
+  HILL_SCORE_ENDPOINT,
   HRV_ENDPOINT,
+  LACTATE_THRESHOLD_ENDPOINT,
   MENSTRUAL_DAY_VIEW_ENDPOINT,
   MENSTRUAL_SUMMARY_ENDPOINT,
+  RACE_PREDICTIONS_ENDPOINT,
   SPO2_ENDPOINT,
   TRAINING_PLANS_LIST_ENDPOINT,
+  TRAINING_READINESS_ENDPOINT,
+  TRAINING_STATUS_ENDPOINT,
   USER_SETTINGS_ENDPOINT,
+  VO2_MAX_ENDPOINT,
   WEIGHT_GOALS_ENDPOINT,
   WEIGHT_RANGE_ENDPOINT,
   WELLNESS_ACTIVITIES_ENDPOINT,
@@ -37,6 +45,7 @@ function todayString(): string {
 }
 
 const MAX_CHUNK_DAYS = 28;
+const RANGE_CONCURRENCY = 4;
 const ACTIVITIES_PAGE_SIZE = 100;
 
 function addDays(date: string, days: number): string {
@@ -209,6 +218,65 @@ export class GarminClient {
 
   getFoodLogs(date = todayString()): Promise<unknown> {
     return this.get(`${FOOD_LOGS_ENDPOINT}/${date}`);
+  }
+
+  private async fetchRange(
+    startDate: string,
+    endDate: string,
+    fetcher: (date: string) => Promise<unknown>,
+  ): Promise<{ date: string; data: unknown }[]> {
+    const dates = this.dateRange(startDate, endDate);
+    const results: { date: string; data: unknown }[] = new Array(dates.length);
+    let next = 0;
+    const worker = async (): Promise<void> => {
+      while (next < dates.length) {
+        const index = next++;
+        const date = dates[index]!;
+        results[index] = { date, data: await fetcher(date).catch(() => null) };
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(RANGE_CONCURRENCY, dates.length) }, worker));
+    return results;
+  }
+
+  getTrainingReadiness(date = todayString()): Promise<unknown> {
+    return this.legacy.request(`${TRAINING_READINESS_ENDPOINT}/${date}`);
+  }
+
+  getTrainingReadinessRange(startDate: string, endDate: string): Promise<{ date: string; data: unknown }[]> {
+    return this.fetchRange(startDate, endDate, (date) => this.getTrainingReadiness(date));
+  }
+
+  getTrainingStatus(date = todayString()): Promise<unknown> {
+    return this.legacy.request(`${TRAINING_STATUS_ENDPOINT}/${date}`);
+  }
+
+  getVO2Max(date = todayString()): Promise<unknown> {
+    return this.legacy.request(`${VO2_MAX_ENDPOINT}/${date}/${date}`);
+  }
+
+  getVO2MaxRange(startDate: string, endDate: string): Promise<{ date: string; data: unknown }[]> {
+    return this.fetchRange(startDate, endDate, (date) => this.getVO2Max(date));
+  }
+
+  getEnduranceScore(startDate: string, endDate: string): Promise<unknown> {
+    return this.legacy.request(`${ENDURANCE_SCORE_ENDPOINT}/stats?startDate=${startDate}&endDate=${endDate}&aggregation=weekly`);
+  }
+
+  getHillScore(startDate: string, endDate: string): Promise<unknown> {
+    return this.legacy.request(`${HILL_SCORE_ENDPOINT}/stats?startDate=${startDate}&endDate=${endDate}&aggregation=daily`);
+  }
+
+  getRacePredictions(): Promise<unknown> {
+    return this.legacy.request(`${RACE_PREDICTIONS_ENDPOINT}/latest/${this.legacy.displayName}`);
+  }
+
+  getLactateThreshold(): Promise<unknown> {
+    return this.legacy.request(LACTATE_THRESHOLD_ENDPOINT);
+  }
+
+  getCyclingFtp(): Promise<unknown> {
+    return this.legacy.request(CYCLING_FTP_ENDPOINT);
   }
 
   getTrainingPlans(): Promise<unknown> {

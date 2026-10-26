@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { summarizeActivity, summarizeCoachTask, summarizeDay, summarizeHrv, summarizeSleep } from './summaries';
+import {
+  summarizeActivity,
+  summarizeCoachTask,
+  summarizeDay,
+  summarizeHrv,
+  summarizeReadiness,
+  summarizeSleep,
+  summarizeTrainingStatus,
+} from './summaries';
 
 describe('summarizeSleep', () => {
   const raw = {
@@ -157,5 +165,61 @@ describe('summarizeCoachTask', () => {
       taskWorkout: { restDay: true, trainingEffectLabel: 'INVALID' },
     });
     expect(rest).toEqual({ date: '2026-10-24', workout: 'Rest' });
+  });
+});
+
+describe('summarizeReadiness', () => {
+  it('uses the latest entry of the day', () => {
+    const summary = summarizeReadiness([
+      { timestamp: '2026-10-21T11:21:15.0', score: 73, level: 'MODERATE', recoveryTime: 967 },
+      { timestamp: '2026-10-21T12:23:44.0', score: 70, level: 'MODERATE', recoveryTime: 1189, feedbackShort: 'RECOVERY_IN_PROGRESS' },
+    ]);
+    expect(summary).toMatchObject({ score: 70, headline: 'recovery in progress', recoveryHours: 19.8 });
+  });
+
+  it('handles an empty day', () => {
+    expect(summarizeReadiness([])).toBeNull();
+    expect(summarizeReadiness(undefined)).toBeNull();
+  });
+});
+
+describe('summarizeTrainingStatus', () => {
+  const raw = {
+    mostRecentVO2Max: { generic: { vo2MaxPreciseValue: 51.2 } },
+    mostRecentTrainingStatus: {
+      latestTrainingStatusData: {
+        1: {
+          trainingStatusFeedbackPhrase: 'PRODUCTIVE_2',
+          sinceDate: '2026-10-11',
+          acuteTrainingLoadDTO: {
+            dailyTrainingLoadAcute: 498,
+            dailyTrainingLoadChronic: 476,
+            dailyAcuteChronicWorkloadRatio: 1.04,
+            acwrStatus: 'OPTIMAL',
+            minTrainingLoadChronic: 381,
+            maxTrainingLoadChronic: 714,
+          },
+        },
+      },
+    },
+    mostRecentTrainingLoadBalance: {
+      metricsTrainingLoadBalanceDTOMap: {
+        1: { trainingBalanceFeedbackPhrase: 'ANAEROBIC_SHORTAGE', monthlyLoadAnaerobic: 49.4, monthlyLoadAnaerobicTargetMin: 259, monthlyLoadAnaerobicTargetMax: 519 },
+      },
+    },
+  };
+
+  it('condenses status, load and balance', () => {
+    expect(summarizeTrainingStatus(raw)).toMatchObject({
+      status: 'productive',
+      since: '2026-10-11',
+      vo2Max: 51.2,
+      load: { acute: 498, chronic: 476, ratio: 1.04, ratioStatus: 'optimal', optimalChronicRange: [381, 714] },
+      loadBalance: { feedback: 'anaerobic shortage', anaerobic: { value: 49, target: [259, 519] } },
+    });
+  });
+
+  it('returns null without data', () => {
+    expect(summarizeTrainingStatus(null)).toBeNull();
   });
 });

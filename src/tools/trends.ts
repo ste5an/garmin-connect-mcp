@@ -2,7 +2,8 @@ import { z } from 'zod';
 import { type DateRange, rangeFields, resolveRange } from './dates';
 import { defineTool } from './define';
 import { compact, kgFromGrams, round, stats } from './format';
-import { summarizeDay, summarizeSleep } from './summaries';
+import { LegacyLoginRequiredError } from '../garmin/legacy-auth';
+import { latestReadiness, summarizeDay, summarizeSleep } from './summaries';
 import type { GarminClient } from '../garmin/client';
 
 type Raw = Record<string, any>;
@@ -17,13 +18,19 @@ const METRICS = [
   'resting_hr',
   'stress',
   'body_battery',
+  'readiness',
   'spo2',
   'respiration',
+  'vo2max',
   'weight',
   'intensity_minutes',
 ] as const;
 
 type Metric = (typeof METRICS)[number];
+
+function requireLegacyLogin(client: GarminClient): void {
+  if (!client.hasLegacyLogin) throw new LegacyLoginRequiredError();
+}
 
 async function dailyRows(client: GarminClient, range: DateRange): Promise<Raw[]> {
   const summaries = (await client.getDailySummaries(range.from, range.to)) as Raw;
@@ -77,6 +84,16 @@ const loaders: Record<Metric, (client: GarminClient, range: DateRange) => Promis
       drained: day.drained,
     })),
   }),
+  readiness: async (client, range) => {
+    requireLegacyLogin(client);
+    return {
+      unit: 'score',
+      rows: (await client.getTrainingReadinessRange(range.from, range.to)).map(({ date, data }) => {
+        const entry = latestReadiness(data);
+        return { date, value: entry?.score, level: entry?.level?.toLowerCase() };
+      }),
+    };
+  },
   spo2: async (client, range) => ({
     unit: '%',
     rows: (await dailyRows(client, range)).map((day) => ({ date: day.date, value: day.spo2?.avg, lowest: day.spo2?.lowest })),
@@ -85,6 +102,16 @@ const loaders: Record<Metric, (client: GarminClient, range: DateRange) => Promis
     unit: 'breaths/min',
     rows: (await dailyRows(client, range)).map((day) => ({ date: day.date, value: day.respiration?.avg })),
   }),
+  vo2max: async (client, range) => {
+    requireLegacyLogin(client);
+    return {
+      unit: 'ml/kg/min',
+      rows: (await client.getVO2MaxRange(range.from, range.to)).map(({ date, data }) => ({
+        date,
+        value: (data as Raw[] | null)?.[0]?.generic?.vo2MaxPreciseValue,
+      })),
+    };
+  },
   weight: async (client, range) => ({
     unit: 'kg',
     rows: (((await client.getWeightMeasurements(range.from, range.to)) as Raw)?.dailyWeightSummaries ?? []).map((day: Raw) => ({
@@ -108,7 +135,7 @@ export const trends = defineTool({
   title: 'Metric trends',
   description:
     'Daily series for one metric over a period, with min/max/average/latest: steps, sleep score, sleep hours, HRV, resting HR, stress, ' +
-    'Body Battery, SpO2, respiration, weight or intensity minutes. Defaults to the last 14 days.',
+    'Body Battery, SpO2, respiration, weight or intensity minutes; readiness and VO2 max need the optional email login. Defaults to the last 14 days.',
   input: {
     metric: z.enum(METRICS).describe('Which metric to chart.'),
     ...rangeFields,
