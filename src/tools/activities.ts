@@ -2,10 +2,12 @@ import { z } from 'zod';
 import { resolveDate } from './dates';
 import { defineTool, gather } from './define';
 import { compact } from './format';
+import { detectIntervals, parsePoints, summarizeSplits } from './splits';
 import { summarizeActivity, summarizeActivityDetail } from './summaries';
 
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 50;
+const INCLUDE_OPTIONS = ['splits', 'intervals'] as const;
 
 export const activities = defineTool({
   name: 'activities',
@@ -32,18 +34,25 @@ export const activity = defineTool({
   name: 'activity',
   title: 'Activity detail',
   description:
-    'One activity by id (ids come from `activities`): summary metrics, running dynamics, training effect and the structured workout it followed, if any.',
+    'One activity by id (ids come from `activities`): summary metrics, running dynamics, training effect, the structured workout it followed, ' +
+    'per-km splits and detected intervals (work and recovery reps with pace and heart rate, found from pace changes because Garmin lap data is not available).',
   input: {
     id: z.number().int().describe('Activity id.'),
+    include: z.array(z.enum(INCLUDE_OPTIONS)).optional().describe('Extra sections. Default ["splits", "intervals"].'),
   },
-  run: async ({ id }, { client }) => {
+  run: async ({ id, include }, { client }) => {
+    const wanted = new Set(include ?? INCLUDE_OPTIONS);
     const { data, unavailable } = await gather({
       summary: () => client.getActivity(id),
       workouts: () => client.getActivityWorkouts(id),
+      details: () => (wanted.size ? client.getActivityDetails(id) : Promise.resolve(undefined)),
     });
     if (!data.summary) throw new Error(`Activity ${id} not found.`);
+    const points = data.details ? parsePoints(data.details as any) : [];
     return compact({
       ...summarizeActivityDetail(data.summary as any),
+      intervals: wanted.has('intervals') ? detectIntervals(points) : undefined,
+      splits: wanted.has('splits') ? summarizeSplits(points) : undefined,
       workouts: ((data.workouts as any[] | undefined) ?? []).map((workout) => ({
         name: workout.workoutName,
         sport: workout.sport,

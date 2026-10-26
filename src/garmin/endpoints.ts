@@ -30,3 +30,4 @@ export const MENSTRUAL_SUMMARY_ENDPOINT = '/periodichealth-service/menstrualcycl
 export const MENSTRUAL_DAY_VIEW_ENDPOINT = '/periodichealth-service/menstrualcycle/dayview';
 
 export const DEFAULT_ACTIVITIES_LIMIT = 20;
+export const ACTIVITY_DETAILS_MAX_CHART_SIZE = 2000;

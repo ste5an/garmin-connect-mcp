@@ -1,6 +1,7 @@
 import { GarminAuth, type QueryParams } from './auth';
 import {
   ACTIVITIES_SEARCH_ENDPOINT,
+  ACTIVITY_DETAILS_MAX_CHART_SIZE,
   ACTIVITY_ENDPOINT,
   BODY_BATTERY_ENDPOINT,
   DAILY_HRV_ENDPOINT,
@@ -114,6 +115,10 @@ export class GarminClient {
 
   getActivity(activityId: number | string): Promise<unknown> {
     return this.get(`${ACTIVITY_ENDPOINT}/${activityId}`);
+  }
+
+  getActivityDetails(activityId: number | string): Promise<unknown> {
+    return this.get(`${ACTIVITY_ENDPOINT}/${activityId}/details`, { maxChartSize: ACTIVITY_DETAILS_MAX_CHART_SIZE });
   }
 
   getActivityWorkouts(activityId: number | string): Promise<unknown> {

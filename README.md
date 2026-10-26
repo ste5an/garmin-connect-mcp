@@ -52,7 +52,7 @@ Set `GARMIN_PERSONAL_API_KEY_FILE` to read the key from another path.
 | `sleep` | Score, stages with ratings, bedtime, SpO2, respiration, sleep need. One night or a range with averages. |
 | `recovery` | HRV status against the balanced range, resting HR, Body Battery, stress, sleep score. A day or a trend. |
 | `activities` | Recent or date-ranged workouts with distance, duration, pace, average and max heart rate, time in each heart-rate zone, cadence, power, elevation, calories, training effect and load. Filter by type. |
-| `activity` | One workout in depth: moving time, pace, heart rate, cadence, stride length, ground contact time, vertical oscillation, elevation, training effect and the structured workout it followed. |
+| `activity` | One workout in depth: moving time, pace, heart rate, cadence, stride length, ground contact time, vertical oscillation, elevation, training effect, the structured workout it followed, per-km splits and detected intervals. |
 | `trends` | Daily series with min/max/average for steps, sleep, HRV, resting HR, stress, Body Battery, SpO2, respiration, weight, intensity minutes. |
 | `weekly_summary` | Per-week run kilometres, longest run and its share of the week, strength sessions, total time, load and week-over-week change. |
 | `body` | Weigh-ins and body composition. |
@@ -61,7 +61,9 @@ Set `GARMIN_PERSONAL_API_KEY_FILE` to read the key from another path.
 
 Dates accept `YYYY-MM-DD`, `today` and `yesterday`. Ranges take `days`, or `from` and `to`.
 
-The Personal API does not offer lap or split data (so no interval work/recovery breakdown), weather, training readiness, training status, VO2 max, race predictions, Garmin Coach plans, saved workouts, gear, devices, goals, personal records, blood pressure or any write access, so those are not available.
+Garmin's lap and workout-step data is not in the Personal API, so `activity` rebuilds splits and intervals from the per-second pace and heart-rate stream (an undocumented `details` endpoint). Per-km splits are exact. Intervals are detected from pace changes: warm-up, work reps, recoveries and cool-down, each with distance, time, pace and heart rate. Boundaries can be off by several seconds, and steady runs report no intervals. If Garmin removes that endpoint, these two sections disappear and everything else keeps working.
+
+The Personal API does not offer official lap data, weather, training readiness, training status, VO2 max, race predictions, Garmin Coach plans, saved workouts, gear, devices, goals, personal records, blood pressure or any write access, so those are not available.
 
 ## Troubleshooting
 
