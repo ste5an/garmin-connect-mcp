@@ -162,10 +162,13 @@ export function summarizeActivityDetail(raw: Raw) {
     maxHr: round(summary.maxHR),
     avgPowerW: round(summary.averagePower),
     normalizedPowerW: round(summary.normalizedPower),
+    maxPowerW: round(summary.maxPower),
     cadence: round(summary.averageRunCadence),
     strideLengthM: summary.strideLength ? round(summary.strideLength / 100, 2) : undefined,
     groundContactMs: round(summary.groundContactTime),
     verticalOscillationCm: round(summary.verticalOscillation, 1),
+    verticalRatioPct: round(summary.verticalRatio, 1),
+    groundContactBalanceLeftPct: round(summary.groundContactBalanceLeft, 1),
     elevationGainM: round(summary.elevationGain),
     elevationLossM: round(summary.elevationLoss),
     calories: round(summary.calories),
@@ -179,6 +182,7 @@ export function summarizeActivityDetail(raw: Raw) {
     steps: summary.steps,
     workoutFeel: summary.directWorkoutFeel,
     workoutRpe: summary.directWorkoutRpe,
+    workoutCompliance: summary.directWorkoutComplianceScore,
   });
 }
 

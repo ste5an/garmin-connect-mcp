@@ -4,8 +4,32 @@ type Raw = Record<string, any>;
 type Axis = 'seconds' | 'meters';
 type Kind = 'fast' | 'slow';
 
-export type Point = { seconds: number; meters: number; hr?: number };
+export type Point = {
+  seconds: number;
+  meters: number;
+  hr?: number;
+  power?: number;
+  cadence?: number;
+  strideCm?: number;
+  groundContactMs?: number;
+  verticalOscillationCm?: number;
+  verticalRatio?: number;
+  gradeAdjustedSpeed?: number;
+  elevation?: number;
+};
 type Run = { kind: Kind; from: number; to: number };
+type Window = ReturnType<typeof measure>;
+
+const STREAM_METRICS = {
+  hr: 'directHeartRate',
+  power: 'directPower',
+  cadence: 'directDoubleCadence',
+  strideCm: 'directStrideLength',
+  groundContactMs: 'directGroundContactTime',
+  verticalOscillationCm: 'directVerticalOscillation',
+  verticalRatio: 'directVerticalRatio',
+  gradeAdjustedSpeed: 'directGradeAdjustedSpeed',
+} as const;
 
 const SMOOTHING_SECONDS = 10;
 const MIN_RUN_SECONDS = 30;
@@ -23,8 +47,9 @@ export function parsePoints(details: Raw | null | undefined): Point[] {
   const indexOf = (key: string): number | undefined => descriptors.find((item) => item.key === key)?.metricsIndex;
   const secondsAt = indexOf('sumDuration');
   const metersAt = indexOf('sumDistance');
-  const hrAt = indexOf('directHeartRate');
+  const elevationAt = indexOf('directElevation');
   if (secondsAt === undefined || metersAt === undefined) return [];
+  const streamAt = Object.entries(STREAM_METRICS).map(([field, key]) => [field, indexOf(key)] as const);
 
   const points: Point[] = [];
   for (const row of details?.activityDetailMetrics ?? []) {
@@ -34,10 +59,21 @@ export function parsePoints(details: Raw | null | undefined): Point[] {
     if (typeof seconds !== 'number' || typeof meters !== 'number') continue;
     const last = points[points.length - 1];
     if (last && (seconds <= last.seconds || meters < last.meters)) continue;
-    const hr = hrAt === undefined ? undefined : metrics[hrAt];
-    points.push({ seconds, meters, hr: typeof hr === 'number' && hr > 0 ? hr : undefined });
+    const point: Point = { seconds, meters };
+    for (const [field, at] of streamAt) {
+      const value = at === undefined ? undefined : metrics[at];
+      if (typeof value === 'number' && value > 0) (point as Record<string, number>)[field] = value;
+    }
+    const elevation = elevationAt === undefined ? undefined : metrics[elevationAt];
+    if (typeof elevation === 'number') point.elevation = elevation;
+    points.push(point);
   }
   return points;
+}
+
+function average(samples: Point[], pick: (point: Point) => number | undefined): number | undefined {
+  const values = samples.map(pick).filter((value): value is number => value !== undefined);
+  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : undefined;
 }
 
 function interpolate(points: Point[], from: Axis, to: Axis, value: number): number {
@@ -55,18 +91,44 @@ function interpolate(points: Point[], from: Axis, to: Axis, value: number): numb
   return points[low]![to] + share * (points[high]![to] - points[low]![to]);
 }
 
-function measure(points: Point[], startSeconds: number, endSeconds: number) {
+export function measure(points: Point[], startSeconds: number, endSeconds: number) {
   const seconds = endSeconds - startSeconds;
   const meters = interpolate(points, 'seconds', 'meters', endSeconds) - interpolate(points, 'seconds', 'meters', startSeconds);
-  const heartRates = points
-    .filter((point) => point.seconds > startSeconds && point.seconds <= endSeconds && point.hr !== undefined)
-    .map((point) => point.hr!);
+  const samples = points.filter((point) => point.seconds > startSeconds && point.seconds <= endSeconds);
+  const heartRates = samples.map((point) => point.hr).filter((value): value is number => value !== undefined);
+  const powers = samples.map((point) => point.power).filter((value): value is number => value !== undefined);
+  const elevations = samples.map((point) => point.elevation).filter((value): value is number => value !== undefined);
   return {
     meters,
     seconds,
     avgHr: heartRates.length ? round(heartRates.reduce((sum, value) => sum + value, 0) / heartRates.length) : undefined,
     maxHr: heartRates.length ? Math.max(...heartRates) : undefined,
+    avgPower: average(samples, (point) => point.power),
+    maxPower: powers.length ? Math.max(...powers) : undefined,
+    cadence: average(samples, (point) => point.cadence),
+    strideCm: average(samples, (point) => point.strideCm),
+    groundContactMs: average(samples, (point) => point.groundContactMs),
+    verticalOscillationCm: average(samples, (point) => point.verticalOscillationCm),
+    verticalRatio: average(samples, (point) => point.verticalRatio),
+    gradeAdjustedSpeed: average(samples, (point) => point.gradeAdjustedSpeed),
+    elevationChange: elevations.length > 1 ? elevations[elevations.length - 1]! - elevations[0]! : undefined,
   };
+}
+
+export function describeWindow(window: Window) {
+  return compact({
+    avgHr: window.avgHr,
+    maxHr: window.maxHr,
+    avgPowerW: round(window.avgPower),
+    maxPowerW: round(window.maxPower),
+    cadence: round(window.cadence),
+    strideLengthM: window.strideCm ? round(window.strideCm / 100, 2) : undefined,
+    groundContactMs: round(window.groundContactMs),
+    verticalOscillationCm: round(window.verticalOscillationCm, 1),
+    verticalRatioPct: round(window.verticalRatio, 1),
+    gapPacePerKm: pacePerKm(window.gradeAdjustedSpeed),
+    elevationChangeM: round(window.elevationChange),
+  });
 }
 
 export function summarizeSplits(points: Point[]) {
@@ -89,8 +151,7 @@ export function summarizeSplits(points: Point[]) {
       distanceKm: end - start < METERS_PER_KM ? km(end - start) : undefined,
       time: clock(lap.seconds),
       pacePerKm: pacePerKm((end - start) / lap.seconds),
-      avgHr: lap.avgHr,
-      maxHr: lap.maxHr,
+      ...describeWindow(lap),
     });
   });
 }

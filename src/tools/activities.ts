@@ -2,12 +2,13 @@ import { z } from 'zod';
 import { resolveDate } from './dates';
 import { defineTool, gather } from './define';
 import { compact } from './format';
+import { buildActivityLaps } from './laps';
 import { detectIntervals, parsePoints, summarizeSplits } from './splits';
 import { summarizeActivity, summarizeActivityDetail } from './summaries';
 
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 50;
-const INCLUDE_OPTIONS = ['splits', 'intervals'] as const;
+const INCLUDE_OPTIONS = ['splits', 'laps', 'intervals'] as const;
 
 export const activities = defineTool({
   name: 'activities',
@@ -35,7 +36,8 @@ export const activity = defineTool({
   title: 'Activity detail',
   description:
     'One activity by id (ids come from `activities`): summary metrics, running dynamics, training effect, the structured workout it followed, ' +
-    'per-km splits and detected intervals (work and recovery reps with pace and heart rate, found from pace changes because Garmin lap data is not available).',
+    'per-km splits and per-step laps (warm-up, every work rep, every recovery, cool-down) with pace, target pace range, heart rate, power, cadence, stride, ground contact, vertical oscillation and elevation. ' +
+    'Laps are rebuilt from the timed workout steps and checked against Garmin step totals; for runs without a matching structured workout, `intervals` are detected from pace changes instead.',
   input: {
     id: z.number().int().describe('Activity id.'),
     include: z.array(z.enum(INCLUDE_OPTIONS)).optional().describe('Extra sections. Default ["splits", "intervals"].'),
@@ -49,9 +51,11 @@ export const activity = defineTool({
     });
     if (!data.summary) throw new Error(`Activity ${id} not found.`);
     const points = data.details ? parsePoints(data.details as any) : [];
+    const laps = wanted.has('laps') ? buildActivityLaps(points, data.workouts, data.summary as any) : undefined;
     return compact({
       ...summarizeActivityDetail(data.summary as any),
-      intervals: wanted.has('intervals') ? detectIntervals(points) : undefined,
+      laps,
+      intervals: wanted.has('intervals') && !laps ? detectIntervals(points) : undefined,
       splits: wanted.has('splits') ? summarizeSplits(points) : undefined,
       workouts: ((data.workouts as any[] | undefined) ?? []).map((workout) => ({
         name: workout.workoutName,
