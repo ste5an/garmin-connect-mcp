@@ -10,6 +10,7 @@ import { sleep } from './sleep';
 import { training } from './training';
 import { trends } from './trends';
 import { weeklySummary } from './weekly';
+import { createRunWorkout, deleteWorkout } from './workout';
 
 export const tools: ToolDefinition<any>[] = [
   dailyBriefing,
@@ -24,4 +25,6 @@ export const tools: ToolDefinition<any>[] = [
   body,
   profile,
   garminApi,
+  createRunWorkout,
+  deleteWorkout,
 ];

@@ -4,7 +4,7 @@ Ask your AI assistant about your Garmin data in plain language: sleep, recovery,
 
 > "How did I sleep and should I go easy today?" · "Compare my last three long runs." · "Is my resting heart rate trending up?"
 
-Twelve task-level tools on top of Garmin's official Personal API, plus an optional email login for your Garmin Coach plan. Responses are trimmed to what matters (a night of sleep is about 500 characters, not 245,000), so answers are fast and cheap. Everything is read-only.
+Fourteen task-level tools on top of Garmin's official Personal API, plus an optional email login for your Garmin Coach plan. Responses are trimmed to what matters (a night of sleep is about 500 characters, not 245,000), so answers are fast and cheap. Everything is read-only except the two workout tools, which need the optional email login.
 
 ## Quick start
 
@@ -70,13 +70,15 @@ Enter your Garmin email and password (and the verification code if you use MFA).
 | `weekly_summary` | Per-week run kilometres, longest run and its share of the week, strength sessions, total time, load and week-over-week change. |
 | `body` | Weigh-ins and body composition. |
 | `profile` | Units, time zone, heart-rate zones, max/resting/threshold heart rate, fitness age. |
+| `create_run_workout` | Build a structured running workout (warm-up, work and recovery steps, repeats, pace targets), save it to Garmin Connect and optionally schedule it on a date so it syncs to the watch. `dryRun` returns the workout without sending it. Needs the optional email login. |
+| `delete_workout` | Delete a saved workout by id, for example one made by `create_run_workout`. Needs the optional email login. |
 | `garmin_api` | Read-only escape hatch for any other Personal API path. Names, ids, emails and GPS coordinates are redacted unless `GARMIN_RAW_UNREDACTED=1`. |
 
 Dates accept `YYYY-MM-DD`, `today` and `yesterday`. Ranges take `days`, or `from` and `to`.
 
 Garmin's lap endpoints (`/laps`, `/splits`, `/typedsplits`) are not in the Personal API, so `activity` rebuilds splits and laps from the per-second stream (an undocumented `details` endpoint). Per-km splits are exact. Laps come from the timed steps of the structured workout the watch followed: the steps are unrolled (repeats included, and a skipped final recovery is handled), cut on the activity timer and measured from the stream, then checked against Garmin's own step totals (`splitSummaries`). If the counts or durations disagree, or the workout has distance, lap-button or open steps, `activity` falls back to intervals detected from pace changes, whose boundaries can be off by several seconds. Steady runs report no laps or intervals. If Garmin removes the `details` endpoint, these sections disappear and everything else keeps working.
 
-The Personal API does not offer manual lap-button laps, weather, saved workouts, gear, devices, goals, personal records, blood pressure or any write access, so those are not available.
+The Personal API does not offer manual lap-button laps, weather, saved workouts, gear, devices, goals, personal records, blood pressure or write access, so those are not available. The two workout tools are the exception: they use the unofficial workout endpoints behind the optional email login, which Garmin can change without notice.
 
 ## Troubleshooting
 
