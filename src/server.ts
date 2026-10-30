@@ -37,7 +37,12 @@ export function createServer(client: GarminClient): McpServer {
         title: tool.title,
         description: tool.description,
         inputSchema: tool.input,
-        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+        annotations: {
+          readOnlyHint: !tool.writes,
+          destructiveHint: tool.destructive === true,
+          idempotentHint: !tool.writes,
+          openWorldHint: true,
+        },
       },
       async (args: Record<string, unknown>) => {
         try {

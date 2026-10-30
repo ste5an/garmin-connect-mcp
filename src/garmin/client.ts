@@ -35,6 +35,8 @@ import {
   WEIGHT_GOALS_ENDPOINT,
   WEIGHT_RANGE_ENDPOINT,
   WELLNESS_ACTIVITIES_ENDPOINT,
+  WORKOUT_ENDPOINT,
+  WORKOUT_SCHEDULE_ENDPOINT,
 } from './endpoints';
 
 function todayString(): string {
@@ -285,6 +287,18 @@ export class GarminClient {
 
   getAdaptiveTrainingPlan(planId: string): Promise<unknown> {
     return this.legacy.request(`${ADAPTIVE_TRAINING_PLAN_ENDPOINT}/${planId}`);
+  }
+
+  createWorkout(workout: unknown): Promise<unknown> {
+    return this.legacy.request(WORKOUT_ENDPOINT, { method: 'POST', body: workout });
+  }
+
+  scheduleWorkout(workoutId: number | string, date: string): Promise<unknown> {
+    return this.legacy.request(`${WORKOUT_SCHEDULE_ENDPOINT}/${workoutId}`, { method: 'POST', body: { date } });
+  }
+
+  deleteWorkout(workoutId: number | string): Promise<unknown> {
+    return this.legacy.request(`${WORKOUT_ENDPOINT}/${workoutId}`, { method: 'DELETE' });
   }
 
   getUserSettings(): Promise<unknown> {

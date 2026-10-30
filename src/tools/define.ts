@@ -8,6 +8,8 @@ export type ToolDefinition<Shape extends ZodRawShape = ZodRawShape> = {
   title: string;
   description: string;
   input: Shape;
+  writes?: boolean;
+  destructive?: boolean;
   run: (args: z.objectOutputType<Shape, z.ZodTypeAny>, context: ToolContext) => Promise<unknown>;
 };
 

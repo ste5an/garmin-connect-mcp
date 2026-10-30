@@ -1,6 +1,6 @@
 # Garmin Connect MCP
 
-MCP server for the Garmin Connect Personal API in TypeScript. Twelve read-only, task-level tools that return trimmed, human-readable data.
+MCP server for the Garmin Connect Personal API in TypeScript. Fourteen task-level tools that return trimmed, human-readable data. Twelve are read-only; `create_run_workout` and `delete_workout` write workouts.
 
 ## Layout
 
@@ -19,7 +19,7 @@ src/
 - Never return raw Garmin payloads from a tool. Put the mapping in `summaries.ts` or the tool file and drop nulls with `compact`. The `garmin_api` tool is the only raw escape hatch.
 - A section that fails must not fail the whole tool: use `gather` and report it in `unavailable`.
 - Dates: accept `YYYY-MM-DD`, `today`, `yesterday` through `resolveDate`/`resolveRange`. All date math is local-calendar or UTC-string based, never `toISOString()` on a local time.
-- The Personal API is read-only. Do not add write tools. Range endpoints cap at 28 days (steps, stress, sleep, Body Battery); go through `chunked` in the client.
+- The Personal API is read-only. The only write tools are `create_run_workout` and `delete_workout`, which go through the optional email login (workout-service) and set `writes: true` in `defineTool`. Do not add other write tools. Range endpoints cap at 28 days (steps, stress, sleep, Body Battery); go through `chunked` in the client.
 - Errors shown to the user come from `describeError` and must say what to do next.
 - Never log to stdout (it is the MCP transport). Use `console.error`.
 
@@ -35,7 +35,7 @@ src/
 
 The key lives in `~/.config/garmin/connect-personal-api-key` (override with `GARMIN_PERSONAL_API_KEY_FILE`). `auth.ts` POSTs it to `/personalapitoken-service/personal-api/personal-api-key/token` for a 24-hour JWT, cached in `~/.garmin-mcp/personal-api-token.json`, and retries once with a fresh token on 401. There is no refresh token. The server never prompts; without a key every tool returns the `AuthRequiredError` message. Never print or log the key or token.
 
-Optional: `login` runs the old SSO + OAuth flow in `legacy-auth.ts` (email, password, MFA) and saves OAuth tokens in `~/.garmin-mcp/`. Only the Coach plan, training readiness, training status, VO2 max, race prediction, endurance/hill score and threshold client methods use it (`coach_plan`, `training`, readiness in `recovery`, `daily_briefing` and `trends`); nothing else may depend on it. Gate every use on `client.hasLegacyLogin` or throw `LegacyLoginRequiredError`, so a missing login never fails a tool that works without it. The server never prompts for it.
+Optional: `login` runs the old SSO + OAuth flow in `legacy-auth.ts` (email, password, MFA) and saves OAuth tokens in `~/.garmin-mcp/`. Only the workout tools, the Coach plan, training readiness, training status, VO2 max, race prediction, endurance/hill score and threshold client methods use it (`coach_plan`, `training`, readiness in `recovery`, `daily_briefing` and `trends`); nothing else may depend on it. Gate every use on `client.hasLegacyLogin` or throw `LegacyLoginRequiredError`, so a missing login never fails a tool that works without it. The server never prompts for it.
 
 ## Commands
 

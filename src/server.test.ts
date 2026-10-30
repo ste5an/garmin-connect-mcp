@@ -11,8 +11,9 @@ describe('tool catalog', () => {
     for (const tool of tools) expect(tool.description.length).toBeGreaterThan(20);
   });
 
-  it('exposes no tool that writes to Garmin', () => {
-    expect(tools.map((tool) => tool.name).filter((name) => /^(log|delete|rename|assign)_/.test(name))).toEqual([]);
+  it('limits writes to the run workout tools', () => {
+    expect(tools.filter((tool) => tool.writes).map((tool) => tool.name)).toEqual(['create_run_workout', 'delete_workout']);
+    expect(tools.filter((tool) => tool.destructive).map((tool) => tool.name)).toEqual(['delete_workout']);
   });
 });
 

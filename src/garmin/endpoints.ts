@@ -43,3 +43,6 @@ export const HILL_SCORE_ENDPOINT = '/metrics-service/metrics/hillscore';
 export const RACE_PREDICTIONS_ENDPOINT = '/metrics-service/metrics/racepredictions';
 export const LACTATE_THRESHOLD_ENDPOINT = '/biometric-service/biometric/latestLactateThreshold';
 export const CYCLING_FTP_ENDPOINT = '/biometric-service/biometric/latestFunctionalThresholdPower/CYCLING';
+
+export const WORKOUT_ENDPOINT = '/workout-service/workout';
+export const WORKOUT_SCHEDULE_ENDPOINT = '/workout-service/schedule';
