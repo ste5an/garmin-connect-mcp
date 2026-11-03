@@ -2,20 +2,21 @@ import { clock, compact, pacePerKm, round } from './format';
 import { describeWindow, measure, type Point } from './splits';
 
 type Raw = Record<string, any>;
-type LapType = 'warmup' | 'work' | 'recovery' | 'cooldown';
+type LapType = 'warmup' | 'work' | 'recovery' | 'rest' | 'cooldown';
 
 export type LapPlan = { type: LapType; seconds: number; targetLow?: number; targetHigh?: number };
 
 const TIMED_STEP = 'TIME';
 const REPEAT_STEP = 'REPEAT_UNTIL_STEPS_CMPLT';
 const DURATION_TOLERANCE_SECONDS = 3;
+const BREAK_TYPES: LapType[] = ['recovery', 'rest'];
 
 const LAP_TYPES: Record<string, LapType> = {
   WARMUP: 'warmup',
   INTERVAL: 'work',
   ACTIVE: 'work',
   RECOVERY: 'recovery',
-  REST: 'recovery',
+  REST: 'rest',
   COOLDOWN: 'cooldown',
 };
 
@@ -23,10 +24,11 @@ const SPLIT_TYPES: Record<LapType, string> = {
   warmup: 'INTERVAL_WARMUP',
   work: 'INTERVAL_ACTIVE',
   recovery: 'INTERVAL_RECOVERY',
+  rest: 'INTERVAL_REST',
   cooldown: 'INTERVAL_COOLDOWN',
 };
 
-export function expandWorkoutSteps(steps: Raw[] | null | undefined): LapPlan[] | undefined {
+export function expandWorkoutSteps(steps: Raw[] | null | undefined, skipLastBreak = false): LapPlan[] | undefined {
   if (!steps?.length) return undefined;
   const plan: LapPlan[] = [];
   const planLengthAt = new Map<number, number>();
@@ -40,6 +42,7 @@ export function expandWorkoutSteps(steps: Raw[] | null | undefined): LapPlan[] |
       if (first === undefined || !(step.targetValue >= 1)) return undefined;
       const block = plan.slice(first);
       for (let repeat = 1; repeat < step.targetValue; repeat++) plan.push(...block.map((lap) => ({ ...lap })));
+      if (skipLastBreak && BREAK_TYPES.includes(plan[plan.length - 1]!.type)) plan.pop();
       continue;
     }
 
@@ -54,12 +57,6 @@ export function expandWorkoutSteps(steps: Raw[] | null | undefined): LapPlan[] |
     });
   }
   return plan;
-}
-
-export function withoutFinalRecovery(plan: LapPlan[]): LapPlan[] {
-  const last = plan.length - 1;
-  const index = plan[last]?.type === 'cooldown' ? last - 1 : last;
-  return plan[index]?.type === 'recovery' ? plan.filter((_, position) => position !== index) : plan;
 }
 
 export function matchesSplitSummaries(plan: LapPlan[], totalSeconds: number, summaries: Raw[] | null | undefined): boolean {
@@ -134,11 +131,9 @@ export function summarizeLaps(points: Point[], plan: LapPlan[]) {
 export function buildActivityLaps(points: Point[], workouts: unknown, activity: Raw | null | undefined) {
   if (points.length < 2 || !Array.isArray(workouts)) return undefined;
   const steps = (workouts as Raw[]).find((workout) => workout.steps?.length)?.steps;
-  const expanded = expandWorkoutSteps(steps);
-  if (!expanded) return undefined;
   const totalSeconds = points[points.length - 1]!.seconds - points[0]!.seconds;
-  const plan = [expanded, withoutFinalRecovery(expanded)].find((candidate) =>
-    matchesSplitSummaries(candidate, totalSeconds, activity?.splitSummaries),
+  const plan = [expandWorkoutSteps(steps), expandWorkoutSteps(steps, true)].find(
+    (candidate) => candidate && matchesSplitSummaries(candidate, totalSeconds, activity?.splitSummaries),
   );
   if (!plan) return undefined;
   return {

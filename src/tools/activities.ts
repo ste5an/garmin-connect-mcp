@@ -36,7 +36,7 @@ export const activity = defineTool({
   title: 'Activity detail',
   description:
     'One activity by id (ids come from `activities`): summary metrics, running dynamics, training effect, the structured workout it followed, ' +
-    'per-km splits and per-step laps (warm-up, every work rep, every recovery, cool-down) with pace, target pace range, heart rate, power, cadence, stride, ground contact, vertical oscillation and elevation. ' +
+    'per-km splits and per-step laps (warm-up, every work rep, every rest and recovery, cool-down) with pace, target pace range, heart rate, power, cadence, stride, ground contact, vertical oscillation and elevation. ' +
     'Laps are rebuilt from the timed workout steps and checked against Garmin step totals; for runs without a matching structured workout, `intervals` are detected from pace changes instead.',
   input: {
     id: z.number().int().describe('Activity id.'),
