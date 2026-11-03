@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildActivityLaps, expandWorkoutSteps, matchesSplitSummaries, summarizeLaps, withoutFinalRecovery } from './laps';
+import { buildActivityLaps, expandWorkoutSteps, matchesSplitSummaries, summarizeLaps } from './laps';
 import { parsePoints, type Point } from './splits';
 
 const speedStep = (stepIndex: number, intensity: string, seconds: number, low: number, high: number) => ({
@@ -19,6 +19,24 @@ const vo2Steps = [
   speedStep(2, 'RECOVERY', 120, 2.055, 2.611),
   { stepIndex: 3, intensity: 'ACTIVE', durationType: 'REPEAT_UNTIL_STEPS_CMPLT', durationValue: 1, targetValue: 4 },
   speedStep(4, 'COOLDOWN', 600, 2.611, 2.972),
+];
+
+const sprintSteps = [
+  speedStep(0, 'WARMUP', 900, 2.666, 3),
+  speedStep(1, 'INTERVAL', 15, 5.194, 6),
+  { stepIndex: 2, intensity: 'REST', durationType: 'TIME', durationValue: 180, targetType: 'OPEN', targetValue: 0 },
+  { stepIndex: 3, intensity: 'ACTIVE', durationType: 'REPEAT_UNTIL_STEPS_CMPLT', durationValue: 1, targetValue: 3 },
+  speedStep(4, 'RECOVERY', 300, 2.111, 2.666),
+  { stepIndex: 5, intensity: 'ACTIVE', durationType: 'REPEAT_UNTIL_STEPS_CMPLT', durationValue: 1, targetValue: 2 },
+  speedStep(6, 'COOLDOWN', 600, 2.666, 3),
+];
+
+const sprintSummaries = [
+  { splitType: 'INTERVAL_WARMUP', noOfSplits: 1, duration: 900 },
+  { splitType: 'INTERVAL_ACTIVE', noOfSplits: 6, duration: 90 },
+  { splitType: 'INTERVAL_REST', noOfSplits: 4, duration: 720 },
+  { splitType: 'INTERVAL_RECOVERY', noOfSplits: 1, duration: 300 },
+  { splitType: 'INTERVAL_COOLDOWN', noOfSplits: 1, duration: 611 },
 ];
 
 function course(legs: [seconds: number, metersPerSecond: number, hr: number][]): Point[] {
@@ -70,16 +88,23 @@ describe('expandWorkoutSteps', () => {
   });
 });
 
-describe('withoutFinalRecovery', () => {
-  it('drops the recovery that sits right before the cool-down', () => {
-    const plan = withoutFinalRecovery(expandWorkoutSteps(vo2Steps)!);
+describe('expandWorkoutSteps with skipLastBreak', () => {
+  it('drops the recovery after the last rep, as the watch does', () => {
+    const plan = expandWorkoutSteps(vo2Steps, true)!;
     expect(plan.map((lap) => lap.type).join(',')).toBe('warmup,work,recovery,work,recovery,work,recovery,work,cooldown');
+  });
+
+  it('drops the last rest of every set in nested repeats', () => {
+    const plan = expandWorkoutSteps(sprintSteps, true)!;
+    expect(plan.map((lap) => lap.type).join(',')).toBe(
+      'warmup,work,rest,work,rest,work,recovery,work,rest,work,rest,work,cooldown',
+    );
   });
 });
 
 describe('matchesSplitSummaries', () => {
   it('accepts a plan whose counts and durations agree with Garmin', () => {
-    const plan = withoutFinalRecovery(expandWorkoutSteps(vo2Steps)!);
+    const plan = expandWorkoutSteps(vo2Steps, true)!;
     expect(matchesSplitSummaries(plan, 2525, summaries)).toBe(true);
   });
 
@@ -124,6 +149,25 @@ describe('buildActivityLaps', () => {
 
   it('summarizes the work reps', () => {
     expect(result.work).toMatchObject({ reps: 4, fastestPace: '4:23', slowestPace: '4:38', hrFirstToLast: [175, 186] });
+  });
+
+  it('rebuilds a sprint session with rests kept apart from recoveries', () => {
+    const sprint = buildActivityLaps(
+      course([
+        [900, 2.9, 151],
+        ...Array.from({ length: 2 }, (_, set) => [
+          [15, 5.8, 170], [180, 2.5, 162], [15, 5.8, 170], [180, 2.5, 162], [15, 5.8, 170],
+          ...(set === 0 ? [[300, 2.6, 159]] : []),
+        ]).flat() as [number, number, number][],
+        [611, 2.7, 173],
+      ]),
+      [{ steps: sprintSteps }],
+      { splitSummaries: sprintSummaries },
+    )!;
+    expect(sprint.laps.map((lap) => lap.type).filter((type) => type === 'rest')).toHaveLength(4);
+    expect(sprint.laps[6]).toMatchObject({ type: 'recovery', time: '5:00' });
+    expect(sprint.laps[12]).toMatchObject({ type: 'cooldown', time: '10:11', avgHr: 173 });
+    expect(sprint.work).toMatchObject({ reps: 6 });
   });
 
   it('returns nothing when the laps do not match Garmin totals', () => {
