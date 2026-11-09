@@ -12,7 +12,7 @@ describe('tool catalog', () => {
   });
 
   it('limits writes to the run workout tools', () => {
-    expect(tools.filter((tool) => tool.writes).map((tool) => tool.name)).toEqual(['create_run_workout', 'delete_workout']);
+    expect(tools.filter((tool) => tool.writes).map((tool) => tool.name)).toEqual(['create_run_workout', 'create_strength_workout', 'delete_workout']);
     expect(tools.filter((tool) => tool.destructive).map((tool) => tool.name)).toEqual(['delete_workout']);
   });
 });

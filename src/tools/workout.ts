@@ -3,6 +3,7 @@ import { LegacyLoginRequiredError } from '../garmin/legacy-auth';
 import { resolveDate } from './dates';
 import { defineTool } from './define';
 import { compact } from './format';
+import { buildStrengthWorkout, describeStrengthWorkout, strengthWorkoutExercisesSchema } from './strength-builder';
 import { buildRunWorkout, describeRunWorkout, runWorkoutStepsSchema } from './workout-builder';
 
 type Raw = Record<string, any>;
@@ -41,13 +42,47 @@ export const createRunWorkout = defineTool({
   },
 });
 
+export const createStrengthWorkout = defineTool({
+  name: 'create_strength_workout',
+  title: 'Create a strength workout',
+  description:
+    'Create a strength workout in Garmin Connect (exercises with sets, reps, weight in pounds and rest) and optionally schedule it on a date so it syncs to the watch. ' +
+    'Needs the optional email login. Use dryRun to check the payload first. Check the workout in Garmin Connect before using it.',
+  input: {
+    name: z.string().min(1).max(80).describe('Workout name shown on the watch.'),
+    exercises: strengthWorkoutExercisesSchema.describe('Exercises in order. Each one is a block of sets.'),
+    date: z.string().optional().describe('Schedule on this day: YYYY-MM-DD, "today" or "tomorrow". Omit to only save it in the workout library.'),
+    dryRun: z.boolean().optional().describe('Build and return the workout without sending it to Garmin.'),
+  },
+  writes: true,
+  run: async ({ name, exercises, date, dryRun }, { client }) => {
+    const workout = buildStrengthWorkout(name, exercises);
+    const summary = describeStrengthWorkout(exercises);
+    const scheduledFor = date ? resolveDate(date) : undefined;
+    if (dryRun) return { dryRun: true, name, scheduledFor, summary, workout };
+
+    if (!client.hasLegacyLogin) throw new LegacyLoginRequiredError();
+    const created = (await client.createWorkout(workout)) as Raw;
+    const workoutId = created?.workoutId;
+    if (!workoutId) throw new Error('Garmin accepted the workout but returned no workoutId. Check Garmin Connect before retrying to avoid a duplicate.');
+    if (scheduledFor) await client.scheduleWorkout(workoutId, scheduledFor);
+    return compact({
+      workoutId,
+      name,
+      scheduledFor,
+      summary,
+      next: 'Open the workout in Garmin Connect to check the exercises, then sync the watch and start the Strength activity.',
+    });
+  },
+});
+
 export const deleteWorkout = defineTool({
   name: 'delete_workout',
   title: 'Delete a saved workout',
   description:
-    'Delete a saved workout from the Garmin Connect library by workoutId, for example one made by create_run_workout. Needs the optional email login.',
+    'Delete a saved workout from the Garmin Connect library by workoutId, for example one made by create_run_workout or create_strength_workout. Needs the optional email login.',
   input: {
-    workoutId: z.union([z.number().int().positive(), z.string().regex(/^\d+$/)]).describe('Id returned by create_run_workout.'),
+    workoutId: z.union([z.number().int().positive(), z.string().regex(/^\d+$/)]).describe('Id returned by create_run_workout or create_strength_workout.'),
   },
   writes: true,
   destructive: true,

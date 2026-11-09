@@ -1,6 +1,6 @@
 # Garmin Connect MCP
 
-MCP server for the Garmin Connect Personal API in TypeScript. Fourteen task-level tools that return trimmed, human-readable data. Twelve are read-only; `create_run_workout` and `delete_workout` write workouts.
+MCP server for the Garmin Connect Personal API in TypeScript. Fifteen task-level tools that return trimmed, human-readable data. Twelve are read-only; `create_run_workout`, `create_strength_workout` and `delete_workout` write workouts.
 
 ## Layout
 
@@ -19,7 +19,7 @@ src/
 - Never return raw Garmin payloads from a tool. Put the mapping in `summaries.ts` or the tool file and drop nulls with `compact`. The `garmin_api` tool is the only raw escape hatch.
 - A section that fails must not fail the whole tool: use `gather` and report it in `unavailable`.
 - Dates: accept `YYYY-MM-DD`, `today`, `yesterday` through `resolveDate`/`resolveRange`. All date math is local-calendar or UTC-string based, never `toISOString()` on a local time.
-- The Personal API is read-only. The only write tools are `create_run_workout` and `delete_workout`, which go through the optional email login (workout-service) and set `writes: true` in `defineTool`. Do not add other write tools. Range endpoints cap at 28 days (steps, stress, sleep, Body Battery); go through `chunked` in the client.
+- The Personal API is read-only. The only write tools are `create_run_workout`, `create_strength_workout` and `delete_workout`, which go through the optional email login (workout-service) and set `writes: true` in `defineTool`. Do not add other write tools. Range endpoints cap at 28 days (steps, stress, sleep, Body Battery); go through `chunked` in the client.
 - Errors shown to the user come from `describeError` and must say what to do next.
 - Never log to stdout (it is the MCP transport). Use `console.error`.
 
