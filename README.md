@@ -71,7 +71,7 @@ Enter your Garmin email and password (and the verification code if you use MFA).
 | `body` | Weigh-ins and body composition. |
 | `profile` | Units, time zone, heart-rate zones, max/resting/threshold heart rate, fitness age. |
 | `create_run_workout` | Build a structured running workout (warm-up, work and recovery steps, repeats, pace targets), save it to Garmin Connect and optionally schedule it on a date so it syncs to the watch. `dryRun` returns the workout without sending it. Needs the optional email login. |
-| `create_strength_workout` | Build a strength workout (exercises as Garmin category and exercise keys, sets, reps, weight in pounds, rest), save it to Garmin Connect and optionally schedule it on a date so it syncs to the watch. `dryRun` returns the workout without sending it. Needs the optional email login. |
+| `create_strength_workout` | Build a strength workout (exercises as Garmin category and exercise keys, sets, reps or timed holds, weight in pounds, rest), save it to Garmin Connect and optionally schedule it on a date so it syncs to the watch. `dryRun` returns the workout without sending it. Needs the optional email login. |
 | `delete_workout` | Delete a saved workout by id, for example one made by `create_run_workout` or `create_strength_workout`. Needs the optional email login. |
 | `garmin_api` | Read-only escape hatch for any other Personal API path. Names, ids, emails and GPS coordinates are redacted unless `GARMIN_RAW_UNREDACTED=1`. |
 

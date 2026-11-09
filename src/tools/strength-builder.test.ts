@@ -56,11 +56,30 @@ describe('buildStrengthWorkout', () => {
   });
 });
 
+describe('timed holds', () => {
+  const hold: StrengthExercise = { category: 'PLANK', exerciseName: 'SIDE_PLANK', sets: 4, holdSeconds: 30 };
+
+  it('ends a hold on time', () => {
+    const work = buildStrengthWorkout('Core', [hold]).workoutSegments[0].workoutSteps[0].workoutSteps[0];
+    expect(work.endCondition.conditionTypeKey).toBe('time');
+    expect(work.endConditionValue).toBe(30);
+  });
+
+  it('rejects an exercise with both or neither of reps and holdSeconds', () => {
+    expect(() => buildStrengthWorkout('x', [{ category: 'PLANK', sets: 2 }])).toThrow('exactly one of reps or holdSeconds');
+    expect(() => buildStrengthWorkout('x', [{ category: 'PLANK', sets: 2, reps: 5, holdSeconds: 30 }])).toThrow('exactly one');
+  });
+});
+
 describe('describeStrengthWorkout', () => {
   it('summarizes each exercise', () => {
     expect(describeStrengthWorkout(exercises)).toEqual([
       'barbell back squat: 3 x 6 at 60 lb, 1:30 rest',
       'dead bug: 2 x 8',
     ]);
+  });
+
+  it('summarizes a timed hold', () => {
+    expect(describeStrengthWorkout([{ category: 'PLANK', exerciseName: 'SIDE_PLANK', sets: 4, holdSeconds: 30 }])).toEqual(['side plank: 4 x 30 s']);
   });
 });

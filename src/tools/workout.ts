@@ -46,7 +46,7 @@ export const createStrengthWorkout = defineTool({
   name: 'create_strength_workout',
   title: 'Create a strength workout',
   description:
-    'Create a strength workout in Garmin Connect (exercises with sets, reps, weight in pounds and rest) and optionally schedule it on a date so it syncs to the watch. ' +
+    'Create a strength workout in Garmin Connect (exercises with sets, reps or timed holds, weight in pounds and rest) and optionally schedule it on a date so it syncs to the watch. ' +
     'Needs the optional email login. Use dryRun to check the payload first. Check the workout in Garmin Connect before using it.',
   input: {
     name: z.string().min(1).max(80).describe('Workout name shown on the watch.'),

@@ -19,7 +19,8 @@ export const strengthExerciseSchema = z.object({
   category: z.string().regex(GARMIN_KEY_PATTERN).describe('Garmin exercise category in upper snake case, for example SQUAT, BENCH_PRESS, PULL_UP, DEADLIFT, LUNGE, CALF_RAISE, CORE, PLANK.'),
   exerciseName: z.string().regex(GARMIN_KEY_PATTERN).optional().describe('Garmin exercise name in upper snake case within the category, for example ROMANIAN_DEADLIFT. Omit to let the watch show the category only.'),
   sets: z.number().int().min(1).max(10).describe('Number of sets.'),
-  reps: z.number().int().min(1).max(100).describe('Reps per set.'),
+  reps: z.number().int().min(1).max(100).optional().describe('Reps per set. Give reps or holdSeconds.'),
+  holdSeconds: z.number().int().min(5).max(600).optional().describe('Duration of a timed hold per set, for example a plank. Give reps or holdSeconds.'),
   weightLb: z.number().positive().max(1000).optional().describe('Weight per set in pounds. Omit for bodyweight.'),
   restSeconds: z.number().int().min(0).max(600).optional().describe('Rest after each set in seconds. Omit or 0 for no timed rest.'),
 });
@@ -32,13 +33,21 @@ export function poundsToKilograms(pounds: number): number {
   return Math.round(pounds * KG_PER_LB * 10) / 10;
 }
 
+function buildEndCondition(exercise: StrengthExercise): Raw {
+  const hasReps = exercise.reps !== undefined;
+  const hasHold = exercise.holdSeconds !== undefined;
+  if (hasReps === hasHold) throw new Error(`The ${exercise.category} exercise needs exactly one of reps or holdSeconds.`);
+  return hasReps
+    ? { endCondition: REPS_CONDITION, endConditionValue: exercise.reps }
+    : { endCondition: TIME_CONDITION, endConditionValue: exercise.holdSeconds };
+}
+
 function buildWorkStep(exercise: StrengthExercise, stepOrder: number): Raw {
   return {
     type: 'ExecutableStepDTO',
     stepOrder,
     stepType: WORK_STEP,
-    endCondition: REPS_CONDITION,
-    endConditionValue: exercise.reps,
+    ...buildEndCondition(exercise),
     targetType: NO_TARGET,
     category: exercise.category,
     ...(exercise.exerciseName ? { exerciseName: exercise.exerciseName } : {}),
@@ -91,6 +100,7 @@ export function describeStrengthWorkout(exercises: StrengthExercise[]): string[]
     const label = (exercise.exerciseName ?? exercise.category).toLowerCase().replace(/_/g, ' ');
     const weight = exercise.weightLb ? ` at ${exercise.weightLb} lb` : '';
     const rest = exercise.restSeconds ? `, ${clock(exercise.restSeconds)} rest` : '';
-    return `${label}: ${exercise.sets} x ${exercise.reps}${weight}${rest}`;
+    const size = exercise.reps !== undefined ? `${exercise.reps}` : `${exercise.holdSeconds} s`;
+    return `${label}: ${exercise.sets} x ${size}${weight}${rest}`;
   });
 }
