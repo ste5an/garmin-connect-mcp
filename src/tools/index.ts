@@ -7,6 +7,7 @@ import { profile } from './profile';
 import { garminApi } from './raw';
 import { recovery } from './recovery';
 import { sleep } from './sleep';
+import { strengthSets } from './strength-sets';
 import { training } from './training';
 import { trends } from './trends';
 import { weeklySummary } from './weekly';
@@ -18,6 +19,7 @@ export const tools: ToolDefinition<any>[] = [
   recovery,
   activities,
   activity,
+  strengthSets,
   training,
   coachPlan,
   trends,

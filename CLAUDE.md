@@ -1,6 +1,6 @@
 # Garmin Connect MCP
 
-MCP server for the Garmin Connect Personal API in TypeScript. Fifteen task-level tools that return trimmed, human-readable data. Twelve are read-only; `create_run_workout`, `create_strength_workout` and `delete_workout` write workouts.
+MCP server for the Garmin Connect Personal API in TypeScript. Sixteen task-level tools that return trimmed, human-readable data. Thirteen are read-only; `create_run_workout`, `create_strength_workout` and `delete_workout` write workouts.
 
 ## Layout
 
@@ -35,7 +35,7 @@ src/
 
 The key lives in `~/.config/garmin/connect-personal-api-key` (override with `GARMIN_PERSONAL_API_KEY_FILE`). `auth.ts` POSTs it to `/personalapitoken-service/personal-api/personal-api-key/token` for a 24-hour JWT, cached in `~/.garmin-mcp/personal-api-token.json`, and retries once with a fresh token on 401. There is no refresh token. The server never prompts; without a key every tool returns the `AuthRequiredError` message. Never print or log the key or token.
 
-Optional: `login` runs the old SSO + OAuth flow in `legacy-auth.ts` (email, password, MFA) and saves OAuth tokens in `~/.garmin-mcp/`. Only the workout tools, the Coach plan, training readiness, training status, VO2 max, race prediction, endurance/hill score and threshold client methods use it (`coach_plan`, `training`, readiness in `recovery`, `daily_briefing` and `trends`); nothing else may depend on it. Gate every use on `client.hasLegacyLogin` or throw `LegacyLoginRequiredError`, so a missing login never fails a tool that works without it. The server never prompts for it.
+Optional: `login` runs the old SSO + OAuth flow in `legacy-auth.ts` (email, password, MFA) and saves OAuth tokens in `~/.garmin-mcp/`. Only the workout tools, the Coach plan, training readiness, strength sets, training status, VO2 max, race prediction, endurance/hill score and threshold client methods use it (`coach_plan`, `training`, `strength_sets`, readiness in `recovery`, `daily_briefing` and `trends`); nothing else may depend on it. Gate every use on `client.hasLegacyLogin` or throw `LegacyLoginRequiredError`, so a missing login never fails a tool that works without it. The server never prompts for it.
 
 ## Commands
 

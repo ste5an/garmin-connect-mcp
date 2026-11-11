@@ -4,7 +4,7 @@ Ask your AI assistant about your Garmin data in plain language: sleep, recovery,
 
 > "How did I sleep and should I go easy today?" · "Compare my last three long runs." · "Is my resting heart rate trending up?"
 
-Fifteen task-level tools on top of Garmin's official Personal API, plus an optional email login for your Garmin Coach plan. Responses are trimmed to what matters (a night of sleep is about 500 characters, not 245,000), so answers are fast and cheap. Everything is read-only except the three workout tools, which need the optional email login.
+Sixteen task-level tools on top of Garmin's official Personal API, plus an optional email login for your Garmin Coach plan. Responses are trimmed to what matters (a night of sleep is about 500 characters, not 245,000), so answers are fast and cheap. Everything is read-only except the three workout tools, which need the optional email login.
 
 ## Quick start
 
@@ -47,7 +47,7 @@ Set `GARMIN_PERSONAL_API_KEY_FILE` to read the key from another path.
 
 ### Optional: email login for Coach plan, readiness and training status
 
-The Personal API does not include training plans, training readiness, training status, VO2 max, race predictions or endurance and hill scores, so those tools use Garmin's unofficial endpoints instead. To enable them:
+The Personal API does not include training plans, training readiness, strength sets, training status, VO2 max, race predictions or endurance and hill scores, so those tools use Garmin's unofficial endpoints instead. To enable them:
 
 ```bash
 npx @ste5an/garmin-connect-mcp login
@@ -59,11 +59,12 @@ Enter your Garmin email and password (and the verification code if you use MFA).
 
 | Tool | Answers |
 |---|---|
-| `daily_briefing` | A day in one call: steps, calories, heart rate, stress, Body Battery, hydration, sleep, HRV, workouts done, and with the optional login training readiness, training status and the coach workouts planned. Start here. |
+| `daily_briefing` | A day in one call: steps, calories, heart rate, stress, Body Battery, hydration, sleep, HRV, workouts done, and with the optional login training readiness, strength sets, training status and the coach workouts planned. Start here. |
 | `sleep` | Score, stages with ratings, bedtime, SpO2, respiration, sleep need. One night or a range with averages. |
 | `recovery` | HRV status against the balanced range, resting HR, Body Battery, stress, sleep score, and training readiness with the optional login. A day or a trend. |
 | `activities` | Recent or date-ranged workouts with distance, duration, pace, average and max heart rate, time in each heart-rate zone, cadence, power, elevation, calories, training effect and load. Filter by type. |
 | `activity` | One workout in depth: moving time, pace, heart rate, cadence, stride length, ground contact time, vertical oscillation, elevation, training effect, the structured workout it followed, per-km splits and per-step laps (every warm-up, work rep, recovery and cool-down with pace against the target range, heart rate, power, cadence, stride, ground contact, vertical oscillation and elevation). |
+| `strength_sets` | Every working set of a strength activity from the watch: exercise, reps, weight in pounds and duration, grouped by exercise with total reps and top weight. Sets under 10 seconds are flagged as skipped. Pass an activity id or a date. Needs the optional email login. |
 | `training` | Training status, acute/chronic load and balance, VO2 max, race time predictions, endurance and hill scores, lactate threshold. Needs the optional email login. |
 | `coach_plan` | Upcoming Garmin Coach workouts with their interval structure. Needs the optional email login. |
 | `trends` | Daily series with min/max/average for steps, sleep, HRV, resting HR, stress, Body Battery, SpO2, respiration, weight, intensity minutes, and with the optional login readiness and VO2 max. |

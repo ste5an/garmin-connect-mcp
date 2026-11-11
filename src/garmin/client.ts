@@ -289,6 +289,10 @@ export class GarminClient {
     return this.legacy.request(`${ADAPTIVE_TRAINING_PLAN_ENDPOINT}/${planId}`);
   }
 
+  getExerciseSets(activityId: number | string): Promise<unknown> {
+    return this.legacy.request(`${ACTIVITY_ENDPOINT}/${activityId}/exerciseSets`);
+  }
+
   createWorkout(workout: unknown): Promise<unknown> {
     return this.legacy.request(WORKOUT_ENDPOINT, { method: 'POST', body: workout });
   }
